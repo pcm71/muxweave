@@ -1,0 +1,22 @@
+# 统一换行符：shell 脚本必须是 LF，否则在 WSL/Linux 下会报
+#   bash: $'\r': command not found
+# Windows 队友克隆后也不会被 autocrlf 破坏。
+* text=auto eol=lf
+
+*.sh          text eol=lf
+*.py          text eol=lf
+*.ys          text eol=lf
+*.v           text eol=lf
+*.eqy         text eol=lf
+*.json        text eol=lf
+*.md          text eol=lf
+*.cc          text eol=lf
+*.cmake       text eol=lf
+CMakeLists.txt text eol=lf
+.gitattributes text eol=lf
+
+# 二进制
+*.png binary
+*.pdf binary
+*.so  binary
+*.tgz binary

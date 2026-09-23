@@ -1,0 +1,26 @@
+# B0 —— 官方统一流程基线（synth_intel → Cyclone IV 系列网表）
+#
+# 这是"人工核对版"参考脚本：把 @@CASE@@ / @@TOP@@ / @@STAT_JSON@@ 换成实际值后可直接跑：
+#   yosys -s configs/b0_synth_intel_cycloneiv.ys
+#
+# 自动化跑请用 scripts/run_case.py（它会用 configs/pipelines.json 生成等价脚本，
+# 并把生成结果留档到 runs/<run_id>/synth.ys 作为证据）。
+#
+# 口径（主办方已确认）：
+#   - 统一使用 synth_intel；pass 插入位置自行调试至结果最优
+#   - 映射终点统一为 Cyclone IV 系列网表
+#   - 缩减率按逐用例平均，主看逻辑单元；DFF 不得多于优化前
+#
+# ⚠️ 先执行 `yosys -p "help synth_intel"` 核对 -family 取值拼写与 LUT 选项（第 3～4 天任务）。
+
+read_verilog @@CASE@@
+hierarchy -top @@TOP@@
+
+# ---- B0：不加任何自研 pass，也不叠加额外优化 ----
+proc
+
+synth_intel -family cycloneiv
+
+# ---- 统计（同一计数阶段；基线与候选必须一致）----
+stat
+stat -json @@STAT_JSON@@

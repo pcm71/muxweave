@@ -1,0 +1,49 @@
+{
+  "_doc": "基线、加强基线与 pmux_opt 插入点候选 pipeline。由 scripts/run_case.py 读取并生成实际 ys 脚本；生成结果会写入 runs/<run_id>/synth.ys 作为证据。",
+  "_placeholders": ["@@TOP@@", "@@STAT_JSON@@", "@@OPT_JSON@@", "@@ANALYZE_JSON@@"],
+
+  "backend": {
+    "name": "synth_intel_cycloneiv",
+    "passes": ["synth_intel -family cycloneiv"],
+    "stat": "tee -o @@STAT_JSON@@ stat -json",
+    "_verify": "已实测(Yosys 0.69)：`stat -json <文件>` 不写文件，参数会被当成模块选择模式，JSON 只打到 stdout；写文件必须用 `tee -o <文件> stat -json`。family 取值 cycloneiv 已验证可用（映射为 cycloneiv_lcell_comb）。JSON 字段名为 num_cells / num_cells_by_type，并含 design 全设计聚合项。"
+  },
+
+  "pipelines": {
+    "B0": {
+      "desc": "官方统一流程基线：proc 后直接进入 synth_intel，不做额外优化。",
+      "id": "B0",
+      "pre": ["proc"],
+      "opt": [],
+      "post": []
+    },
+    "B1": {
+      "desc": "加强基线：在 synth_intel 之前叠加已有细粒度优化，用于检验自研收益是否只是别人已实现的能力。",
+      "id": "B1",
+      "pre": ["proc", "opt"],
+      "opt": [],
+      "post": ["opt_reduce -fine", "opt_merge", "opt_muxtree", "opt_share"]
+    },
+    "O_INSERT_A": {
+      "desc": "作品路线 A：pmux_opt 紧随 proc（此时 $pmux 尚未被破坏，但周边逻辑未清理）。",
+      "id": "O_INSERT_A",
+      "pre": ["proc"],
+      "opt": ["pmux_opt -json @@OPT_JSON@@"],
+      "post": ["opt_clean"]
+    },
+    "O_INSERT_B": {
+      "desc": "作品路线 B：先 opt 再 pmux_opt（控制/数据重复更容易暴露，但 mux 树可能已被部分化简）。",
+      "id": "O_INSERT_B",
+      "pre": ["proc", "opt"],
+      "opt": ["pmux_opt -json @@OPT_JSON@@"],
+      "post": ["opt"]
+    },
+    "ANALYZE_ONLY": {
+      "desc": "只分析不改网表：用于第 1 周的 PMUX 识别核对与人机会话。",
+      "id": "ANALYZE_ONLY",
+      "pre": ["proc"],
+      "opt": ["pmux_analyze -json @@ANALYZE_JSON@@"],
+      "post": []
+    }
+  }
+}

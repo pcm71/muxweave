@@ -1,0 +1,641 @@
+# 自研 pass 接入 Yosys 0.69 —— 补丁
+# 生成时间 : 2026-09-23T21:54:23+08:00
+# 基版本   : /home/ylk/src/yosys
+# Yosys    : v0.69  commit 9f75ca1f9834a39a863915b5dae0c7b1e33533bc
+#
+# 用法：
+#   cd <你的 yosys 源码树（tag v0.69）>
+#   git apply /path/to/yosys-0.69-pmux.patch
+#   cmake -B build . -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/.local
+#   cmake --build build --config Release --parallel 5 && cmake --install build --strip
+#
+# 等价做法（推荐给队友）：直接跑本仓库的 scripts/install_into_yosys.sh
+#   它会复制 plugin/*.cc 到 passes/pmux/、追加注册行、重编并自检。
+#
+# 改动清单（应只有这些）：
+#   M passes/CMakeLists.txt      （新增 1 行 add_subdirectory(pmux)）
+#   A passes/pmux/CMakeLists.txt
+#   A passes/pmux/pmux_analyze.cc
+#   A passes/pmux/pmux_opt.cc
+# 明确未使用 plugin -i 动态加载方案。
+
+=== git status --porcelain ===
+ M passes/CMakeLists.txt
+?? passes/pmux/
+
+=== 注册行 diff（passes/CMakeLists.txt）===
+diff --git a/passes/CMakeLists.txt b/passes/CMakeLists.txt
+index 8e0c4a1..0997156 100644
+--- a/passes/CMakeLists.txt
++++ b/passes/CMakeLists.txt
+@@ -9,3 +9,4 @@ add_subdirectory(proc)
+ add_subdirectory(sat)
+ add_subdirectory(techmap)
+ add_subdirectory(tests)
++add_subdirectory(pmux)
+
+=== 新增文件（未跟踪内容单独附上）===
+diff --git a/passes/pmux/CMakeLists.txt b/passes/pmux/CMakeLists.txt
+new file mode 100755
+index 0000000..a807c6b
+--- /dev/null
++++ b/passes/pmux/CMakeLists.txt
+@@ -0,0 +1,17 @@
++# passes/pmux/CMakeLists.txt —— 自研 pass 的注册文件
++#
++# 本文件要复制到 Yosys 源码树的 passes/pmux/CMakeLists.txt。
++# 写法与 Yosys 0.69 自带组完全一致（参考 passes/opt/CMakeLists.txt）：
++#   yosys_pass(<名称> <源文件> [REQUIRES ...] [ENABLE_IF ...] [ESSENTIAL])
++# 宏定义位置：cmake/YosysComponent.cmake 的 function(yosys_pass ...)
++#
++# 说明：这里刻意把两个自研 pass 放在独立子目录，好处是
++#   ① 提交时 diff 极小（passes/CMakeLists.txt 只多一行 add_subdirectory(pmux)）；
++#   ② 自研边界一目了然，答辩时便于说明"哪些是我们写的"。
++
++yosys_pass(pmux_analyze
++	pmux_analyze.cc
++)
++yosys_pass(pmux_opt
++	pmux_opt.cc
++)
+diff --git a/passes/pmux/pmux_analyze.cc b/passes/pmux/pmux_analyze.cc
+new file mode 100755
+index 0000000..6f1fa76
+--- /dev/null
++++ b/passes/pmux/pmux_analyze.cc
+@@ -0,0 +1,348 @@
++/*
++ * pmux_analyze —— 只读分析 pass：统计 $pmux / $mux 的位宽、分支数、选择信号身份与跨位重复模式。
++ *
++ * 第 1 周目标（方案「第 4～5 天：写 PMUX 分析器」）：
++ *   - 列出每个 PMUX 的 W（位宽）、K（分支数）、控制来源、各分支数据源；
++ *   - 按位对数据源聚类，识别"多个分支共用同一数据位"的重复模式；
++ *   - 把相邻且模式一致的位合并为位片（SlicePattern）；
++ *   - 统计跨位共享机会（同一分组模式被多少位使用）——这是主算法的机会来源；
++ *   - 输出机器可读 JSON + 人可读摘要表；**不修改网表**。
++ *
++ * 用法：
++ *   yosys -p "read_verilog x.v; hierarchy -top top; proc; pmux_analyze -json a.json"
++ *   yosys -p "...; pmux_analyze -table -max-report 20"
++ *
++ * 重要：本文件是按 Yosys pass 通用框架写的骨架。接入 0.69 时请以 passes/ 下现有 pass
++ * 为模板核对 execute() 签名与 ID::A/ID::B/ID::S/ID::Y 的可用性（见 plugin/INTEGRATION.md）。
++ */
++
++#include "kernel/register.h"
++#include "kernel/log.h"
++#include "kernel/rtlil.h"
++#include "kernel/sigtools.h"
++
++#include <algorithm>
++#include <fstream>
++#include <map>
++#include <set>
++#include <sstream>
++#include <string>
++#include <vector>
++
++USING_YOSYS_NAMESPACE
++PRIVATE_NAMESPACE_BEGIN
++
++/* ---------- 小工具 ---------- */
++
++static std::string json_escape(const std::string &s)
++{
++    std::string o;
++    o.reserve(s.size() + 8);
++    for (char c : s) {
++        switch (c) {
++            case '"':  o += "\\\""; break;
++            case '\\': o += "\\\\"; break;
++            case '\n': o += "\\n";  break;
++            case '\r': o += "\\r";  break;
++            case '\t': o += "\\t";  break;
++            default:
++                if ((unsigned char)c < 0x20) {
++                    char buf[8];
++                    snprintf(buf, sizeof(buf), "\\u%04x", (unsigned char)c);
++                    o += buf;
++                } else {
++                    o += c;
++                }
++        }
++    }
++    return o;
++}
++
++/* 一个数据位的"分支分组模式"：把 K 个分支的数据源按身份聚类后写成字符串，
++   例如 "A|A|B|B" 表示分支 0/1 共用数据源 A，分支 2/3 共用数据源 B。 */
++struct BitPattern {
++    std::string key;        // 模式字符串（用于比较与统计）
++    int distinct = 0;       // 不同数据源个数
++    int reused_groups = 0;  // 出现次数 >= 2 的分组个数
++    int reused_bits = 0;    // 落在这些分组里的分支数
++};
++
++static BitPattern analyze_bit(const std::vector<SigBit> &sources)
++{
++    std::map<SigBit, int> group_of;
++    std::vector<int> ids;
++    for (const auto &b : sources) {
++        auto it = group_of.find(b);
++        if (it == group_of.end()) {
++            int id = (int)group_of.size();
++            group_of.emplace(b, id);
++            ids.push_back(id);
++        } else {
++            ids.push_back(it->second);
++        }
++    }
++
++    std::map<int, int> counts;
++    for (int id : ids) counts[id]++;
++
++    BitPattern p;
++    p.distinct = (int)group_of.size();
++    std::ostringstream key;
++    for (size_t i = 0; i < ids.size(); i++) {
++        if (i) key << "|";
++        key << "g" << ids[i];
++    }
++    p.key = key.str();
++    for (auto &kv : counts) {
++        if (kv.second >= 2) {
++            p.reused_groups++;
++            p.reused_bits += kv.second;
++        }
++    }
++    return p;
++}
++
++/* 结构摘要：用于"参考设计始终可恢复"的可审计凭据（弱哈希，仅证明未改动） */
++static std::string structural_digest(RTLIL::Design *design)
++{
++    uint64_t h = 1469598103934665603ULL; // FNV-1a 64
++    auto mix = [&h](const std::string &s) {
++        for (unsigned char c : s) { h ^= c; h *= 1099511628211ULL; }
++    };
++    for (auto module : design->selected_modules()) {
++        mix(module->name.str());
++        for (auto cell : module->selected_cells()) {
++            mix(cell->type.str());
++            mix(cell->name.str());
++            for (auto &conn : cell->connections())
++                mix(conn.first.str() + log_signal(conn.second));
++        }
++    }
++    char buf[32];
++    snprintf(buf, sizeof(buf), "%016llx", (unsigned long long)h);
++    return std::string(buf);
++}
++
++/* ---------- pass ---------- */
++
++struct PmuxAnalyzePass : public Pass {
++    PmuxAnalyzePass() : Pass("pmux_analyze", "analyze $pmux/$mux cells: width, branches, select identity, cross-bit reuse") {}
++
++    void help() override
++    {
++        log("\n");
++        log("    pmux_analyze [options]\n");
++        log("\n");
++        log("只读分析：统计设计中的 $pmux / $mux 目标、位宽 W、分支数 K、选择信号身份，\n");
++        log("并按位聚类数据源，报告跨位重复模式与共享机会。不改变网表。\n");
++        log("\n");
++        log("    -json <file>\n");
++        log("        把机器可读结果写入 JSON 文件。\n");
++        log("\n");
++        log("    -table\n");
++        log("        在终端打印人可读的分析表。\n");
++        log("\n");
++        log("    -max-report <n>\n");
++        log("        终端表格最多列出前 n 个 cell（默认 10，0 表示全部）。\n");
++        log("\n");
++        log("示例：\n");
++        log("    read_verilog x.v; hierarchy -top top; proc\n");
++        log("    pmux_analyze -table -json analyze.json\n");
++        log("\n");
++    }
++
++    void execute(std::vector<std::string> args, RTLIL::Design *design) override
++    {
++        std::string json_file;
++        bool want_table = false;
++        int max_report = 10;
++
++        size_t argidx;
++        for (argidx = 1; argidx < args.size(); argidx++) {
++            std::string a = args[argidx];
++            if (a == "-json" && argidx + 1 < args.size()) { json_file = args[++argidx]; continue; }
++            if (a == "-table") { want_table = true; continue; }
++            if (a == "-max-report" && argidx + 1 < args.size()) { max_report = atoi(args[++argidx].c_str()); continue; }
++            break;
++        }
++        extra_args(args, argidx, design);
++
++        int total_pmux = 0, total_mux = 0, cells_with_reuse = 0;
++        int global_max_w = 0, global_max_k = 0, shared_pattern_bits_total = 0;
++        int bits_with_reuse_total = 0;
++
++        std::ostringstream out;
++        out << "{\n";
++        out << "  \"creator\": \"pmux_analyze\",\n";
++        out << "  \"yosys_version\": \"" << json_escape(yosys_version_str) << "\",\n";
++        out << "  \"digest\": \"" << structural_digest(design) << "\",\n";
++        out << "  \"modules\": [\n";
++
++        bool first_module = true;
++        for (auto module : design->selected_modules()) {
++            SigMap sigmap(module);
++
++            struct SlicePat {
++                int start = 0;
++                int width = 0;
++                std::string pattern;
++                bool reuse = false;   // 该位片是否含分支复用（真正的机会来源）
++            };
++            struct CellInfo {
++                std::string name, type;
++                int width = 0, branches = 0;
++                std::vector<std::string> select;
++                int distinct_bits = 0, reused_bits = 0;
++                std::vector<SlicePat> slices;
++                std::string opportunity;
++            };
++            std::vector<CellInfo> infos;
++
++            for (auto cell : module->selected_cells()) {
++                bool is_pmux = cell->type == ID($pmux);
++                bool is_mux  = cell->type == ID($mux);
++                if (!is_pmux && !is_mux) continue;
++
++                SigSpec a = sigmap(cell->getPort(ID::A));
++                SigSpec b = sigmap(cell->getPort(ID::B));
++                SigSpec s = is_pmux ? sigmap(cell->getPort(ID::S)) : SigSpec();
++
++                int W = a.size();
++                int K = is_pmux ? s.size() : 1;
++                if (W <= 0) continue;
++                if (is_mux && b.size() < W) continue;
++                if (is_pmux && (K <= 0 || b.size() < W * K)) continue;
++
++                CellInfo ci;
++                ci.name = cell->name.str();
++                ci.type = is_pmux ? "$pmux" : "$mux";
++                ci.width = W;
++                ci.branches = K;
++                for (auto bit : s) ci.select.push_back(log_signal(bit));
++
++                /* 逐位分析 */
++                std::vector<BitPattern> pats(W);
++                for (int j = 0; j < W; j++) {
++                    std::vector<SigBit> sources;
++                    sources.reserve(K);
++                    for (int i = 0; i < K; i++)
++                        sources.push_back(b[i * W + j]);
++                    pats[j] = analyze_bit(sources);
++                    if (pats[j].reused_groups > 0) ci.reused_bits++;
++                    else ci.distinct_bits++;
++                }
++
++                /* 统计哪些"完整模式"被多个位共用（跨位共享机会） */
++                std::map<std::string, int> reuse_pattern_uses;
++                for (int j = 0; j < W; j++)
++                    if (pats[j].reused_groups > 0) reuse_pattern_uses[pats[j].key]++;
++                int shared_bits = 0;
++                for (int j = 0; j < W; j++)
++                    if (pats[j].reused_groups > 0 && reuse_pattern_uses[pats[j].key] >= 2)
++                        shared_bits++;
++
++                /* 相邻同模式位合并为位片 */
++                for (int j = 0; j < W; ) {
++                    int k = j;
++                    while (k + 1 < W && pats[k + 1].key == pats[j].key) k++;
++                    SlicePat sp;
++                    sp.start = j;
++                    sp.width = k - j + 1;
++                    sp.pattern = pats[j].key;
++                    sp.reuse = (pats[j].reused_groups > 0);
++                    ci.slices.push_back(sp);
++                    j = k + 1;
++                }
++
++                ci.opportunity = (ci.reused_bits > 0) ? (ci.reused_bits >= (W + 1) / 2 ? "high" : "medium") : "none";
++                if (ci.reused_bits > 0) cells_with_reuse++;
++                bits_with_reuse_total += ci.reused_bits;
++                shared_pattern_bits_total += shared_bits;
++
++                if (is_pmux) total_pmux++; else total_mux++;
++                global_max_w = std::max(global_max_w, W);
++                global_max_k = std::max(global_max_k, K);
++                infos.push_back(ci);
++            }
++
++            if (infos.empty() && !first_module) continue;
++
++            if (!first_module) out << ",\n";
++            first_module = false;
++            out << "    {\n";
++            out << "      \"name\": \"" << json_escape(module->name.str()) << "\",\n";
++            out << "      \"cells\": [\n";
++            for (size_t i = 0; i < infos.size(); i++) {
++                const auto &ci = infos[i];
++                out << "        {\n";
++                out << "          \"cell\": \"" << json_escape(ci.name) << "\",\n";
++                out << "          \"type\": \"" << ci.type << "\",\n";
++                out << "          \"width\": " << ci.width << ",\n";
++                out << "          \"branches\": " << ci.branches << ",\n";
++                out << "          \"select\": [";
++                for (size_t t = 0; t < ci.select.size(); t++) {
++                    if (t) out << ", ";
++                    out << "\"" << json_escape(ci.select[t]) << "\"";
++                }
++                out << "],\n";
++                out << "          \"bits_with_reuse\": " << ci.reused_bits << ",\n";
++                out << "          \"bits_distinct\": " << ci.distinct_bits << ",\n";
++                out << "          \"slice_patterns\": [";
++                for (size_t t = 0; t < ci.slices.size(); t++) {
++                    if (t) out << ", ";
++                    out << "{\"start\": " << ci.slices[t].start
++                        << ", \"width\": " << ci.slices[t].width
++                        << ", \"reuse\": " << (ci.slices[t].reuse ? "true" : "false")
++                        << ", \"pattern\": \"" << json_escape(ci.slices[t].pattern) << "\"}";
++                }
++                out << "],\n";
++                out << "          \"opportunity\": \"" << ci.opportunity << "\"\n";
++                out << "        }" << (i + 1 < infos.size() ? "," : "") << "\n";
++            }
++            out << "      ]\n";
++            out << "    }";
++
++            if (want_table) {
++                log("\n");
++                log("== 模块 %s：%d 个目标 cell ==\n", module->name.c_str(), (int)infos.size());
++                log("%-28s %-6s %4s %4s %6s %6s  %s\n", "cell", "type", "W", "K", "复用位", "位片数", "机会");
++                int shown = 0;
++                for (const auto &ci : infos) {
++                    if (max_report > 0 && shown >= max_report) { log("  ...（其余省略，用 -max-report 0 显示全部）\n"); break; }
++                    log("%-28s %-6s %4d %4d %6d %6d  %s\n", ci.name.c_str(), ci.type.c_str(),
++                        ci.width, ci.branches, ci.reused_bits, (int)ci.slices.size(), ci.opportunity.c_str());
++                    shown++;
++                }
++            }
++        }
++
++        out << "\n  ],\n";
++        out << "  \"summary\": {\n";
++        out << "    \"pmux_cells\": " << total_pmux << ",\n";
++        out << "    \"mux_cells\": " << total_mux << ",\n";
++        out << "    \"cells_with_reuse\": " << cells_with_reuse << ",\n";
++        out << "    \"bits_with_reuse_total\": " << bits_with_reuse_total << ",\n";
++        out << "    \"shared_pattern_bits\": " << shared_pattern_bits_total << ",\n";
++        out << "    \"max_width\": " << global_max_w << ",\n";
++        out << "    \"max_choices\": " << global_max_k << "\n";
++        out << "  }\n";
++        out << "}\n";
++
++        log("\n");
++        log("pmux_analyze: $pmux=%d, $mux=%d, 有复用模式的 cell=%d, 复用位总数=%d, 跨位共享位=%d, max W=%d, max K=%d\n",
++            total_pmux, total_mux, cells_with_reuse, bits_with_reuse_total, shared_pattern_bits_total,
++            global_max_w, global_max_k);
++        if (total_pmux + total_mux == 0)
++            log("pmux_analyze: 没有目标结构 —— 请确认读入阶段与 hierarchy 之后是否真的留下了 $pmux/$mux。\n");
++
++        if (!json_file.empty()) {
++            std::ofstream f(json_file);
++            if (!f) log_error("无法写入 %s\n", json_file.c_str());
++            f << out.str();
++            f.close();
++            log("pmux_analyze: 已写出 %s\n", json_file.c_str());
++        }
++    }
++} PmuxAnalyzePass;
++
++PRIVATE_NAMESPACE_END
+diff --git a/passes/pmux/pmux_opt.cc b/passes/pmux/pmux_opt.cc
+new file mode 100755
+index 0000000..0d4cf75
+--- /dev/null
++++ b/passes/pmux/pmux_opt.cc
+@@ -0,0 +1,221 @@
++/*
++ * pmux_opt —— 优化 pass 骨架（第 1 周：可调用、可退出、默认不改结构）。
++ *
++ * 第 1 周只要求"命令可调用且不破坏流程"，因此本骨架的行为是：
++ *   1. 复用 pmux_analyze 的机会统计（跨位分组共享机会）；
++ *   2. 输出一条可追溯的运行记录（JSON）：规则、候选、映射收益、验证状态、回退原因；
++ *   3. **不做任何结构变换**，明确报告 fallback=true —— 参考设计始终可恢复。
++ *
++ * 第 3～5 周再按方案第 7、8 节接入：
++ *   C0 保留原结构 / C1 位片分组＋共享选择子表达式 / C2 受控层次结构 / C3 可选二进制译码，
++ *   并对每个候选执行「固定后端映射 → 比较 → 形式等价 → 择优或回退」。
++ *
++ * 用法：
++ *   yosys -p "read_verilog x.v; hierarchy -top top; proc; pmux_opt -json opt.json"
++ *   yosys -p "...; pmux_opt -rule group_shared_select -json opt.json"
++ */
++
++#include "kernel/register.h"
++#include "kernel/log.h"
++#include "kernel/rtlil.h"
++#include "kernel/sigtools.h"
++
++#include <fstream>
++#include <map>
++#include <sstream>
++#include <string>
++#include <vector>
++
++USING_YOSYS_NAMESPACE
++PRIVATE_NAMESPACE_BEGIN
++
++static std::string json_escape_opt(const std::string &s)
++{
++    std::string o;
++    for (char c : s) {
++        switch (c) {
++            case '"':  o += "\\\""; break;
++            case '\\': o += "\\\\"; break;
++            case '\n': o += "\\n";  break;
++            case '\r': o += "\\r";  break;
++            case '\t': o += "\\t";  break;
++            default:   o += c;
++        }
++    }
++    return o;
++}
++
++static std::string digest_of(RTLIL::Design *design)
++{
++    uint64_t h = 1469598103934665603ULL;
++    auto mix = [&h](const std::string &s) { for (unsigned char c : s) { h ^= c; h *= 1099511628211ULL; } };
++    for (auto module : design->selected_modules()) {
++        mix(module->name.str());
++        for (auto cell : module->selected_cells()) {
++            mix(cell->type.str());
++            for (auto &conn : cell->connections()) mix(conn.first.str() + log_signal(conn.second));
++        }
++    }
++    char buf[32];
++    snprintf(buf, sizeof(buf), "%016llx", (unsigned long long)h);
++    return std::string(buf);
++}
++
++struct PmuxOptPass : public Pass {
++    PmuxOptPass() : Pass("pmux_opt", "PMUX structure-sharing optimizer (week-1 skeleton: analyze + safe fallback)") {}
++
++    void help() override
++    {
++        log("\n");
++        log("    pmux_opt [options]\n");
++        log("\n");
++        log("PMUX 结构共享优化入口。第 1 周为骨架版本：只统计机会并记录运行，不改变网表，\n");
++        log("并显式报告 fallback=true（保留参考设计）。\n");
++        log("\n");
++        log("    -json <file>\n");
++        log("        输出运行记录 JSON（含规则、候选、回退原因、结构摘要）。\n");
++        log("\n");
++        log("    -rule <name>\n");
++        log("        指定要启用的规则名（可多次）。第 1 周只接受 analyze_only；\n");
++        log("        其余规则名会被记录为 unimplemented 并回退。\n");
++        log("\n");
++        log("    -budget-ms <n>\n");
++        log("        搜索预算（毫秒）。第 1 周仅记录，不参与决策。\n");
++        log("\n");
++        log("    -quiet\n");
++        log("        减少终端输出。\n");
++        log("\n");
++    }
++
++    void execute(std::vector<std::string> args, RTLIL::Design *design) override
++    {
++        std::string json_file;
++        std::vector<std::string> rules;
++        long budget_ms = 0;
++        bool quiet = false;
++
++        size_t argidx;
++        for (argidx = 1; argidx < args.size(); argidx++) {
++            std::string a = args[argidx];
++            if (a == "-json" && argidx + 1 < args.size()) { json_file = args[++argidx]; continue; }
++            if (a == "-rule" && argidx + 1 < args.size()) { rules.push_back(args[++argidx]); continue; }
++            if (a == "-budget-ms" && argidx + 1 < args.size()) { budget_ms = atol(args[++argidx].c_str()); continue; }
++            if (a == "-quiet") { quiet = true; continue; }
++            break;
++        }
++        extra_args(args, argidx, design);
++
++        const std::string ref_digest = digest_of(design);
++
++        /* --- 机会统计（沿用 pmux_analyze 的口径，第 1 周只做统计） --- */
++        int pmux_count = 0, mux_count = 0, cells_with_reuse = 0, shared_bits_total = 0;
++        int bits_with_reuse_total = 0;
++        int max_w = 0, max_k = 0;
++
++        for (auto module : design->selected_modules()) {
++            SigMap sigmap(module);
++            for (auto cell : module->selected_cells()) {
++                bool is_pmux = cell->type == ID($pmux);
++                bool is_mux  = cell->type == ID($mux);
++                if (!is_pmux && !is_mux) continue;
++
++                SigSpec a = sigmap(cell->getPort(ID::A));
++                SigSpec b = sigmap(cell->getPort(ID::B));
++                int W = a.size();
++                int K = is_pmux ? (int)sigmap(cell->getPort(ID::S)).size() : 1;
++                if (W <= 0 || K <= 0 || (int)b.size() < W * K) continue;
++
++                if (is_pmux) pmux_count++; else mux_count++;
++                max_w = std::max(max_w, W);
++                max_k = std::max(max_k, K);
++
++                std::map<std::string, int> reuse_pattern_uses;
++                std::vector<std::string> keys(W);
++                std::vector<bool> bit_has_reuse(W, false);
++                for (int j = 0; j < W; j++) {
++                    std::map<SigBit, int> group_of;
++                    std::map<int, int> gcount;
++                    std::ostringstream key;
++                    for (int i = 0; i < K; i++) {
++                        SigBit bit = b[i * W + j];
++                        auto it = group_of.find(bit);
++                        int id;
++                        if (it == group_of.end()) { id = (int)group_of.size(); group_of.emplace(bit, id); }
++                        else id = it->second;
++                        gcount[id]++;
++                        if (i) key << "|";
++                        key << "g" << id;
++                    }
++                    keys[j] = key.str();
++                    bool reused = false;
++                    for (auto &kv : gcount) if (kv.second >= 2) reused = true;
++                    bit_has_reuse[j] = reused;
++                    if (reused) reuse_pattern_uses[keys[j]]++;
++                }
++                int shared = 0, reuse_bits = 0;
++                for (int j = 0; j < W; j++) {
++                    if (bit_has_reuse[j]) {
++                        reuse_bits++;
++                        if (reuse_pattern_uses[keys[j]] >= 2) shared++;
++                    }
++                }
++                if (reuse_bits > 0) cells_with_reuse++;
++                bits_with_reuse_total += reuse_bits;
++                shared_bits_total += shared;
++            }
++        }
++
++        /* --- 规则接受情况：第 1 周全部回退 --- */
++        std::vector<std::string> accepted, rejected;
++        std::string fallback_reason;
++        for (const auto &r : rules) {
++            if (r == "analyze_only") { accepted.push_back(r); continue; }
++            rejected.push_back(r);
++        }
++        if (accepted.empty()) fallback_reason = "week1-skeleton: no structural rule implemented";
++        if (!rejected.empty())
++            fallback_reason += fallback_reason.empty() ? "unimplemented rule(s)" : "; unimplemented rule(s)";
++
++        if (!quiet) {
++            log("\n");
++            log("pmux_opt: $pmux=%d, $mux=%d, 有复用模式的 cell=%d, 复用位总数=%d, 跨位共享位=%d, max W=%d, max K=%d\n",
++                pmux_count, mux_count, cells_with_reuse, bits_with_reuse_total, shared_bits_total, max_w, max_k);
++            log("pmux_opt: 第 1 周骨架版本 —— 不做结构变换，输出保留参考设计（fallback=true）。\n");
++            if (!rejected.empty()) {
++                for (auto &r : rejected) log("pmux_opt: 规则 '%s' 尚未实现，已记录为 unimplemented。\n", r.c_str());
++            }
++        }
++
++        if (!json_file.empty()) {
++            std::ofstream f(json_file);
++            if (!f) log_error("无法写入 %s\n", json_file.c_str());
++            f << "{\n";
++            f << "  \"creator\": \"pmux_opt\",\n";
++            f << "  \"yosys_version\": \"" << json_escape_opt(yosys_version_str) << "\",\n";
++            f << "  \"reference_digest\": \"" << ref_digest << "\",\n";
++            f << "  \"output_digest\": \"" << digest_of(design) << "\",\n";
++            f << "  \"budget_ms\": " << budget_ms << ",\n";
++            f << "  \"pmux_count\": " << pmux_count << ",\n";
++            f << "  \"mux_count\": " << mux_count << ",\n";
++            f << "  \"max_width\": " << max_w << ",\n";
++            f << "  \"max_choices\": " << max_k << ",\n";
++            f << "  \"cells_with_reuse\": " << cells_with_reuse << ",\n";
++            f << "  \"bits_with_reuse_total\": " << bits_with_reuse_total << ",\n";
++            f << "  \"shared_pattern_bits\": " << shared_bits_total << ",\n";
++            f << "  \"accepted_rules\": [";
++            for (size_t i = 0; i < accepted.size(); i++) { if (i) f << ", "; f << "\"" << json_escape_opt(accepted[i]) << "\""; }
++            f << "],\n";
++            f << "  \"rejected_rules\": [";
++            for (size_t i = 0; i < rejected.size(); i++) { if (i) f << ", "; f << "\"" << json_escape_opt(rejected[i]) << "\""; }
++            f << "],\n";
++            f << "  \"fallback\": true,\n";
++            f << "  \"fallback_reason\": \"" << json_escape_opt(fallback_reason) << "\",\n";
++            f << "  \"formal_status\": \"NOT_RUN\"\n";
++            f << "}\n";
++            f.close();
++            if (!quiet) log("pmux_opt: 已写出 %s\n", json_file.c_str());
++        }
++    }
++} PmuxOptPass;
++
++PRIVATE_NAMESPACE_END

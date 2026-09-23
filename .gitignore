@@ -1,0 +1,26 @@
+# 运行产物与临时文件不入库
+runs/
+reports/*.csv
+reports/*.md
+*.log
+*.json
+!configs/pipelines.json
+
+# EQY 运行残留（正常情况会被 formal/mini/run_formal_mini.sh 归档到 runs/）
+equiv_*/
+equiv_ok/
+equiv_bad/
+
+# 一次性诊断输出
+_*.txt
+
+# 编辑器/系统
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc

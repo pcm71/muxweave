@@ -1,0 +1,20 @@
+# equiv_bad.eqy —— 故意错误候选：必须 FAIL
+# 运行：eqy formal/mini/equiv_bad.eqy   （在仓库根目录执行）
+#
+# 如果这个例子被判成 PASS，说明验证流程不可信 —— 这正是它存在的意义：
+# 它证明"验证流程不是一个永远显示绿色的界面"。
+
+[options]
+splitnets off
+
+[gold]
+read_verilog formal/mini/gold.v
+prep -top mini
+
+[gate]
+read_verilog formal/mini/gate_bad.v
+prep -top mini
+
+[strategy simple]
+use sat
+depth 5

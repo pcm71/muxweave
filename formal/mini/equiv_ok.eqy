@@ -1,0 +1,21 @@
+# equiv_ok.eqy —— 正确候选：应当 PASS
+# 运行：eqy formal/mini/equiv_ok.eqy   （在仓库根目录执行）
+#
+# 策略说明：`use sat` 使用 Yosys 内置 sat 的 k-induction，**不需要 SBY，也不需要外部求解器**，
+# 因此第 1 周零外部依赖即可跑通"正确例 PASS / 错误例 FAIL"。
+# 后续做全设计验证时再切到 [strategy sby]，并在此登记 SBY 与求解器版本。
+
+[options]
+splitnets off
+
+[gold]
+read_verilog formal/mini/gold.v
+prep -top mini
+
+[gate]
+read_verilog formal/mini/gate_ok.v
+prep -top mini
+
+[strategy simple]
+use sat
+depth 5
