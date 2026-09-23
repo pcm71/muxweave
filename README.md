@@ -20,6 +20,16 @@
 
 ---
 
+## 0. 解压后第一条命令
+
+```bash
+bash setup.sh --check-only    # 先自检：包完整性、行尾、环境（不编译）
+bash setup.sh                 # 全流程：编译 Yosys+EQY → 接入 pass → 验证 → 报告（约 20 分钟）
+```
+
+`setup.sh` 是幂等的，可以反复运行；依赖没装它会告诉你确切的 apt 命令。
+（想让它直接帮你装依赖：`bash setup.sh --install-deps`，会要一次 sudo 密码。）
+
 ## 1. 环境要求（Linux 或 WSL2）
 
 **推荐 WSL2 + Ubuntu 24.04**（apt 自带 CMake ≥ 3.28；22.04 需要 `sudo snap install cmake --classic`）。
