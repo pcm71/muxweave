@@ -7,6 +7,31 @@
 > 已确认：统一 `synth_intel`、映射为 **Cyclone IV 系列网表**、pass **编入 Yosys 主程序**（禁止 `plugin` 加载）、
 > 缩减率按**逐用例平均**且主看**逻辑单元**、耗时按 **CPU 时间**、内存按**整个进程峰值**。
 
+## 远端仓库
+
+`https://github.com/pcm71/muxweave.git`（私有；分支 `main`）
+
+## 拿到仓库后第一步（队友看这里）
+
+```bash
+git clone https://github.com/pcm71/muxweave.git
+cd muxweave
+bash setup.sh --check-only     # 先自检（几秒，不编译）
+bash setup.sh                  # 全流程搭建（约 20 分钟）
+```
+
+> ⚠️ **不要执行 GitHub 网页在空仓库时提示的那两条命令**（`echo "# muxweave" >> README.md` 和 `git init`）。
+> 那是给"本地还没有项目"的人用的；我们已经有完整仓库和 5 个提交，执行它会凭空多出一个 README.md
+> 并覆盖仓库状态。克隆下来的目录**直接就能用**。
+
+日常协作三步（详见 [`docs/collaboration.md`](docs/collaboration.md)）：
+
+```bash
+git pull                                  # 开工前先拉
+git add -A && git commit -m "说明改了什么"  # 收工前提交
+git push                                  # 推送
+```
+
 ---
 
 ## 0. 第 1 周的通过条件（不满足不能进第 2 周）

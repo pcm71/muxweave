@@ -1,4 +1,37 @@
-# 团队协作方式（不建远端仓库）
+# 团队协作方式
+
+> **当前状态：已建 GitHub 私有远端** —— `https://github.com/pcm71/muxweave.git`（分支 `main`）。
+> 正常协作请直接用下面的「方式 0」，其余三种留作备选（远端不可用、断网、或需要离线传递时）。
+
+---
+
+## 方式 0（当前采用）：GitHub 私有仓库
+
+```bash
+# 队友：克隆
+git clone https://github.com/pcm71/muxweave.git
+cd muxweave && git config user.name "你的名字" && git config user.email "你的邮箱"
+
+# 日常三步
+git pull
+git add -A && git commit -m "说明改了什么"
+git push
+```
+
+**本机已做的配置（备忘，换机器要重做）**
+
+```bash
+git remote add origin https://github.com/pcm71/muxweave.git
+git config http.proxy  http://127.0.0.1:10810   # 本机代理是 HTTP 代理（10808 是 SOCKS5）
+git config https.proxy http://127.0.0.1:10810
+git branch -M main
+```
+
+推送时若提示登录：用 Git Credential Manager 走浏览器授权（推荐），或粘贴 Personal Access Token（勾 `repo`）。
+
+---
+
+## 备选方式（远端不可用时）
 
 三人各自本地都是完整 git 仓库，通过下面任一方式交换提交。**三种方式可以混用**，
 关键是：谁也不能直接改别人的工作目录，改动一律通过 git 提交传递。
