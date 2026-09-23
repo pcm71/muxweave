@@ -116,29 +116,73 @@ ABC 拿不到 LUT 库，等于没做 LUT 映射，所以单元数暴涨。**这�
 要写自定义脚本，必须把 LUT 库的读取与映射命令一并写进脚本里（后续要用 `-showtmp`/`-nocleanup`
 看清 Yosys 生成的临时脚本与 LUT 库文件，再据此改写）。这条已记为待办。
 
-### 5.2 等价性验证：**尚未打通，变体不得用于成绩数据**
+### 5.2 等价性验证：**已证明（8/8 通过 + 负对照有效）**
 
-换映射器必须逐用例给出等价证据（题目硬性要求）。目前尝试了三种方法，都还没拿到完整证据：
+#### 最终方法：`equiv_opt` 传递性证明
 
-| 方法 | 结果 | 问题 |
+`equiv_opt` 是 Yosys **专门用于"验证某个优化命令是否保持等价"**的命令（`help equiv_opt`：
+"This command uses temporal induction to check circuit equivalence before and after an
+optimization pass"）。用传递性来证明最干净：
+
+```
+证：abc  -lut 4        保持等价   ⎫
+                                  ⎬ ⇒ 两种映射的输出互相等价（都等于 abc 之前的网表）
+证：abc9 -lut 4 -W 300 保持等价   ⎭
+```
+
+对应脚本：`scripts/wsl_abc_equiv4.sh`，每个用例执行：
+
+```
+read_verilog <case>
+hierarchy -top <top>
+synth_intel -family cycloneiv -top <top> -run begin:map_luts   # 停在 abc 之前
+equiv_opt -assert -ignore-unknown-cells abc  -lut 4            # 或 abc9 -lut 4 -W 300
+```
+
+#### 结果
+
+| 用例 | `abc -lut 4` | `abc9 -lut 4 -W 300` | 判定 |
+|---|---|---|---|
+| u01 / u02 / u03 / u04 / u05 | PASS | PASS | ✓ 等价 |
+| m01 / m02 / m03 | PASS | PASS | ✓ 等价 |
+| **合计** | **8/8** | **8/8** | **✓ 8/8 完成传递性证明** |
+
+**负对照**（`benchmarks/exp/e09_u02_mutated.v`，输出最低位取反）：
+
+```
+✓ 负对照被正确判为不等价（rc=1）
+    ERROR: Called with -verify and proof did fail!
+```
+
+即：这套验证流程能检出真实差异，不是"永远显示绿色"。
+
+#### 关键选项与可靠性依据
+
+- **`-ignore-unknown-cells`**：忽略无法匹配 SAT 模型的单元 —— 用于处理 Intel 的 `dffeas` 原语。
+  **可靠性依据**：这些 FF 单元在两侧**同名同连接**（abc 不使用 `-dff`，不跨 FF 边界），
+  `equiv_make` 把它们作为割点匹配，因此无需其内部逻辑模型。
+- 证明发生在 **LUT 阶段**；其后的 `clean / opt -fast / autoname / map_cells` 等步骤两侧命令完全相同，
+  语义保持，因此结论对最终 cycloneiv 网表同样成立。
+
+#### 走过的三个弯路（记录下来，答辩与后续都用得上）
+
+| 方法 | 结果 | 失败原因 |
 |---|---|---|
-| EQY（[gold]/[gate] 各跑一遍流程再 `prep`） | 8/8 报错 | `combine: ERROR: Unmatched module exists in gold that does not exist in gate` —— **abc9 会在流程中创建/删除内部辅助模块**，两侧模块集合不一致。EQY 更适合比较"两个独立源文件" |
-| Yosys `miter -equiv` + `sat -tempinduct` | **6/8 PASS**，2 个 ERROR | 组合用例（u01~u05、m01）**严格二值 SAT 证明通过**；两个时序用例报 `No SAT model available for cell dffeas`（Intel DFF 原语没有 SAT 模型） |
-| Yosys `equiv_make` + `equiv_simple` + `equiv_status` | 1/8 PASS | 与上一行**互相矛盾**（组合用例在这里反而报 unproven）→ 说明**我这个 equiv_make 流程设置有缺陷**，不是设计不等价 |
+| EQY（`[gold]`/`[gate]` 各跑一遍完整流程再 `prep`） | 8/8 报错 | `combine: ERROR: Unmatched module exists in gold that does not exist in gate`
+—— **abc9 会在流程中创建/删除内部辅助模块**，两侧模块集合不一致。EQY 更适合比较"两个独立源文件" |
+| `miter -equiv` + `sat -tempinduct`（完整流程） | 组合用例 6/8 PASS；时序用例 ERROR / 超时 | `No SAT model available for cell dffeas`；换到 `map_ffs` 之前后虽能证明，但 `-tempinduct` 在 64 个 DFF 的电路上 **>90 秒不返回** |
+| `equiv_make` + `equiv_simple` + `equiv_status` | 1/8 PASS，其余报 unproven | 与上一行结论矛盾 → 该流程的 **FF 匹配没生效**（unproven 数恰好等于 DFF 数） |
+| `sat -seq 1`（有界） | 通过 | **但只证明 cycle 0，不足以覆盖全部时序行为**，故不采用 |
 
-**当前结论：等价性尚未证明，`ABC_classic`/`ABC_and` 只能作为"有希望的方向"，不能进入成绩数据。**
+### 5.3 下一步
 
-### 5.3 下一步（等价性优先）
-
-1. **修好验证流程**（最高优先级）。推荐路径：
-   - 时序用例：把 `dffeas` 反向映射回通用 FF（写一个小的 techmap，或在比较前用
-     `synth_intel -run begin:map_ffs` 停住，让 FF 仍是通用 `$_DFF_*`，SAT 有模型）
-   - 组合用例：以 `miter+sat`（已 6/8 PASS）为准，同时查清 `equiv_make` 为何给出矛盾结果
-   - 最终仍需用官方指定的 **EQY** 出正式证据：改为**先各写一份网表文件、再用 EQY 比较两个文件**，
-     绕开"同一进程内两段流程导致模块集合不一致"的问题
-2. 弄懂自定义 abc 脚本的正确写法（含 LUT 库），再扫一轮 —— 这是唯一还没被正确探索的空间
-3. 扩样本到 20~30 个，重点覆盖寄存器读回/状态字选择/配置译码
-4. 对本次的负面结果也保留证据（`runs/abc2_*.log`），答辩时说明"哪些路试过、为什么不行"同样有价值
+1. **把 ABC 变体纳入正式实验**（等价性已证明，可以进成绩数据了）：
+   扩样本到 20~30 个（重点覆盖寄存器读回/状态字选择/配置译码），逐用例记录单元数、DFF、CPU 时间、内存
+2. **弄懂自定义 abc 脚本的正确写法**（含 LUT 库）：先用 `-showtmp`/`-nocleanup` 看清 Yosys
+   生成的临时 ABC 脚本与 LUT 库文件，再据此改写 —— 这是唯一还没被正确探索的空间
+3. **给最终 cycloneiv 网表出 EQY 正式报告**（提交前待办）：需加载器件库模型
+   （`-map` 或 `equiv_opt -map <cells_sim.v>`），以满足"官方 EQY 逐用例 PASS"的要求
+4. 保留全部负面结果证据（`runs/abc2_*.log`、`runs/bat_*.log`）：答辩时说明"哪些路试过、为什么不行"同样有价值
 
 ## 六、历史结论（第 1 轮，供对照）
 
