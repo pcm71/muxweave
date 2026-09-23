@@ -34,9 +34,18 @@ git switch -c rescue week1-baseline  # 想在此基础上改
 | 项 | 值 |
 |---|---|
 | 远端 | `https://github.com/pcm71/muxweave.git`（私有） |
-| `main` | `4b49c43`（与 origin/main 同步） |
-| tag | `week1-baseline` @ `4b49c43` |
-| 进行中分支 | `exp/insertion-point` |
+| `main` | `28e5eae`（第 2 周插入点实验已合并；`--no-ff` 保留实验分支记录） |
+| tag | `week1-baseline`（第 1 周四阶段全 PASS）、`week2-insertion`（插入点实验完成） |
+| 已归档分支 | `exp/insertion-point` @ `b67cfaa`（已完成使命，可保留作证据或删除） |
+
+**第 2 周实验结论摘要**（详见 [`week2_insertion_point.md`](week2_insertion_point.md)）：
+
+- 加强基线 `B1` 与官方基线 `B0` **完全等价**（8 用例合计 284 vs 284 单元）——
+  `synth_intel` 内部已含 `opt_expr/wreduce/peepopt/opt -fine -full/abc9 -lut 4`，
+  外部叠加的 `opt_reduce/opt_merge/opt_muxtree/opt_share` 无增量。
+- 插入点选定 **`O_INSERT_A`：`proc` → `pmux_opt` → `synth_intel`**
+  （必须在 synth_intel 之前：其内部 `proc` 后立刻 `opt`，末尾已整体映射为 LCELL，不再有 `$pmux`）。
+- 自研 pass 未扰动网表（A/B 与基线逐用例一致），只读设计验证通过。
 
 ## 3. 日常操作
 

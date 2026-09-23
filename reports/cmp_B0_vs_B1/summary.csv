@@ -1,9 +1,0 @@
-﻿input,baseline,candidate,pmux_count,mux_count,max_width,max_choices,bits_with_reuse,shared_pattern_bits,base_logic,opt_logic,reduction,dff_base,dff_opt,dff_violation,cpu_time,peak_mem_kb,formal_status,formal_not_pass,run_dir
-benchmarks/mixed/m01_decode_mask_pmux.v,B0,B1,1,0,16,4,0,0,44,44,0.0,0,0,False,0.2507,29132,NOT_RUN,False,runs/m01_decode_mask_pmux__B0__20260923T143324Z/result.json
-benchmarks/mixed/m02_regfile_readback.v,B0,B1,1,14,32,4,0,0,120,120,0.0,64,64,False,0.2551,29620,NOT_RUN,False,runs/m02_regfile_readback__B0__20260923T143325Z/result.json
-benchmarks/mixed/m03_registered_pmux.v,B0,B1,1,6,8,4,8,8,35,35,0.0,30,30,False,0.2253,29624,NOT_RUN,False,runs/m03_registered_pmux__B0__20260923T143326Z/result.json
-benchmarks/unit/u01_mux2_wide.v,B0,B1,1,0,8,2,0,0,8,8,0.0,0,0,False,0.1802,28644,NOT_RUN,False,runs/u01_mux2_wide__B0__20260923T143327Z/result.json
-benchmarks/unit/u02_pmux4_shared_fields.v,B0,B1,1,0,8,4,8,8,12,12,0.0,0,0,False,0.1848,28872,NOT_RUN,False,runs/u02_pmux4_shared_fields__B0__20260923T143327Z/result.json
-benchmarks/unit/u03_pmux4_const_and_default.v,B0,B1,1,0,16,4,4,4,31,31,0.0,0,0,False,0.2014,29284,NOT_RUN,False,runs/u03_pmux4_const_and_default__B0__20260923T143328Z/result.json
-benchmarks/unit/u04_pmux8_narrow_onehot.v,B0,B1,1,0,1,8,0,0,14,14,0.0,0,0,False,0.1921,29072,NOT_RUN,False,runs/u04_pmux8_narrow_onehot__B0__20260923T143329Z/result.json
-benchmarks/unit/u05_negative_no_mux.v,B0,B1,0,0,0,0,0,0,20,20,0.0,0,0,False,0.2074,28728,NOT_RUN,False,runs/u05_negative_no_mux__B0__20260923T143330Z/result.json

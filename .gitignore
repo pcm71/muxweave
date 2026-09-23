@@ -1,7 +1,10 @@
 # 运行产物与临时文件不入库
 runs/
-reports/*.csv
-reports/*.md
+# reports/ 下全是生成物。注意两点：
+#   ① `reports/*.md` 只匹配根层，子目录会漏，故用 `reports/*`；
+#   ② 目录本身不能整体排除，否则无法用 ! 反选回 README.md。
+reports/*
+!reports/README.md
 *.log
 *.json
 !configs/pipelines.json
