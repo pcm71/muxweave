@@ -177,6 +177,86 @@
         "clean", "opt -fast", "autoname", "clean",
         "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
       ]
+    },
+
+    "_abc_script_doc": "以下是基于 abc 默认 -lut 脚本（strash; &get -n; &fraig -x; &put; scorr; dc2; dretime; strash; dch -f; if; mfs2; lutpack -S 1）做定向改动的变体。`-script` 支持 '+命令串' 内联写法：逗号会被替换成空格后传给 ABC。",
+
+    "ABC_noret": {
+      "desc": "ABC 脚本变体：去掉 dretime（不做延迟重定时，偏面积）",
+      "id": "ABC_noret",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script +strash,&get,-n,&fraig,-x,&put,scorr,dc2,strash,dch,-f,if,mfs2,lutpack,-S,1",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_dc2aig": {
+      "desc": "ABC 脚本变体：在 AIG 上加一轮 &dc2（don't-care 化简）——针对 $pmux 多选未定义这一杠杆",
+      "id": "ABC_dc2aig",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script +strash,&get,-n,&fraig,-x,&dc2,&put,scorr,dc2,dretime,strash,dch,-f,if,mfs2,lutpack,-S,1",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_if_area": {
+      "desc": "ABC 脚本变体：映射步骤 if 改面积优先（if -a）",
+      "id": "ABC_if_area",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script +strash,&get,-n,&fraig,-x,&put,scorr,dc2,dretime,strash,dch,-f,if,-a,mfs2,lutpack,-S,1",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_lutpack2": {
+      "desc": "ABC 脚本变体：lutpack 提高打包档位（-S 2）",
+      "id": "ABC_lutpack2",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script +strash,&get,-n,&fraig,-x,&put,scorr,dc2,dretime,strash,dch,-f,if,mfs2,lutpack,-S,2",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_nf": {
+      "desc": "ABC 脚本变体：映射前插入 &nf（节点因式分解）",
+      "id": "ABC_nf",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script +strash,&get,-n,&fraig,-x,&put,scorr,dc2,dretime,strash,&get,-n,&nf,&put,dch,-f,if,mfs2,lutpack,-S,1",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_and": {
+      "desc": "ABC 变体：强制只映射成 AND 门（-g AND），看 LUT 打包是否更好",
+      "id": "ABC_and",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -g AND",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC9_noW": {
+      "desc": "隔离实验：abc9 -lut 4（去掉官方用的 -W 300），看这个 w 参数到底起不起作用",
+      "id": "ABC9_noW",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
     }
   }
 }

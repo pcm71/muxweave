@@ -1,0 +1,30 @@
+# 自动生成：验证"换 ABC 映射器"前后等价（gold=官方 abc9，gate=经典 abc）
+# 只改 abc 那一步，其余流程两侧完全一致；停在 LUT 阶段（见脚本注释）。
+[options]
+splitnets off
+
+[gold]
+read_verilog benchmarks/mixed/m01_decode_mask_pmux.v
+hierarchy -top m01_decode_mask_pmux
+synth_intel -family cycloneiv -top m01_decode_mask_pmux -run begin:map_luts
+abc9 -lut 4 -W 300
+clean
+opt -fast
+autoname
+clean
+prep -top m01_decode_mask_pmux
+
+[gate]
+read_verilog benchmarks/mixed/m01_decode_mask_pmux.v
+hierarchy -top m01_decode_mask_pmux
+synth_intel -family cycloneiv -top m01_decode_mask_pmux -run begin:map_luts
+abc -lut 4
+clean
+opt -fast
+autoname
+clean
+prep -top m01_decode_mask_pmux
+
+[strategy simple]
+use sat
+depth 5
