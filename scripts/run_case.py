@@ -72,7 +72,8 @@ def build_script(case: Path, top: str, pipe: dict, backend: dict, repl: dict) ->
         lines.append(p)
     for p in pipe.get("post", []):
         lines.append(p)
-    for p in backend.get("passes", []):
+    # 允许 pipeline 自带 backend 序列（实验用：例如分段调用 synth_intel 并替换 abc 步骤）
+    for p in (pipe.get("backend_passes") or backend.get("passes", [])):
         lines.append(p)
     lines.append("stat")
     lines.append(backend.get("stat", "stat -json @@STAT_JSON@@"))
@@ -95,6 +96,10 @@ def build_analyze_script(case: Path, top: str, pipe: dict, repl: dict) -> str:
     ]
     for p in pipe.get("pre", []):
         lines.append(p)
+    # 保证分析阶段在 proc 之后：某些实验 pipeline 的 pre 为空（backend 自带 proc），
+    # 若不补这一步，analyze 会在层次展开后就分析，看不到任何 $pmux。
+    if not any(p.strip().startswith("proc") for p in pipe.get("pre", [])):
+        lines.append("proc")
     lines.append("pmux_analyze -table -json @@ANALYZE_JSON@@")
     lines = [_substitute(l, repl) for l in lines]
     leftover = [l for l in lines if "@@" in l]
@@ -276,6 +281,7 @@ def do_run(args) -> int:
     analyze_ys = run_dir / "analyze.ys"
 
     repl = {
+        "@@TOP@@": top,
         "@@STAT_JSON@@": stat_json,
         "@@ANALYZE_JSON@@": analyze_json,
         "@@OPT_JSON@@": opt_json,

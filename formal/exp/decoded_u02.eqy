@@ -1,0 +1,16 @@
+# decoded_u02.eqy —— 验证"显式一热译码 + 或合并版"与原始 u02 功能等价
+# 重点验证：删掉"没有命中"的默认路径是否安全（因为 sel 只有 4 个取值，默认路径不可达）。
+[options]
+splitnets off
+
+[gold]
+read_verilog benchmarks/exp/e01_u02_base.v
+prep -top dut
+
+[gate]
+read_verilog benchmarks/exp/e03_u02_decoded.v
+prep -top dut
+
+[strategy simple]
+use sat
+depth 5

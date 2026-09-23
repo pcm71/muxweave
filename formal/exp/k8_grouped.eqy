@@ -1,0 +1,17 @@
+# k8_grouped.eqy —— K=8 最强机会测试的等价性验证
+# 注意：EQY 要求 gold 与 gate 的**顶层模块名一致**（这里都是 dut），
+#       否则报 "Top modules of gold and gate do not have the same name"。
+[options]
+splitnets off
+
+[gold]
+read_verilog benchmarks/exp/e06_k8_base.v
+prep -top dut
+
+[gate]
+read_verilog benchmarks/exp/e07_k8_grouped.v
+prep -top dut
+
+[strategy simple]
+use sat
+depth 5

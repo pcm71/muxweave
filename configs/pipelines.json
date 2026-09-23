@@ -44,6 +44,139 @@
       "pre": ["proc"],
       "opt": ["pmux_analyze -json @@ANALYZE_JSON@@"],
       "post": []
+    },
+
+    "_battery_doc": "以下 P_* 是第 2 周的『已有能力电池』：逐个测试 Yosys 自带的、与 mux/共享/化简相关的 pass，看它们插在 synth_intel 之前能否比 B0 省单元。用来定位『官方后端是否还有没吃掉的优化空间』。",
+
+    "P_pmux2shiftx": {
+      "desc": "电池：pmux2shiftx（把 PMUX 结构转成移位结构，Yosys 自带但不在 synth_intel 流程内）",
+      "id": "P_pmux2shiftx",
+      "pre": ["proc"],
+      "opt": [],
+      "post": ["pmux2shiftx"]
+    },
+    "P_muxpack": {
+      "desc": "电池：muxpack（把 mux 树打包成更宽的单元）",
+      "id": "P_muxpack",
+      "pre": ["proc"],
+      "opt": [],
+      "post": ["muxpack"]
+    },
+    "P_share": {
+      "desc": "电池：share（资源共享）",
+      "id": "P_share",
+      "pre": ["proc"],
+      "opt": [],
+      "post": ["share"]
+    },
+    "P_opt_reduce_fine": {
+      "desc": "电池：opt_reduce -fine（细粒度 MUX 输入合并；验证是否真的被 opt -fine -full 覆盖）",
+      "id": "P_opt_reduce_fine",
+      "pre": ["proc"],
+      "opt": [],
+      "post": ["opt_reduce -fine"]
+    },
+    "P_muxtree": {
+      "desc": "电池：opt_muxtree（删除不可能激活的分支）",
+      "id": "P_muxtree",
+      "pre": ["proc"],
+      "opt": [],
+      "post": ["opt_muxtree"]
+    },
+    "P_wreduce": {
+      "desc": "电池：wreduce（位宽缩减）",
+      "id": "P_wreduce",
+      "pre": ["proc"],
+      "opt": [],
+      "post": ["wreduce"]
+    },
+    "P_pmx2s_muxpack": {
+      "desc": "电池：pmux2shiftx + muxpack 组合",
+      "id": "P_pmx2s_muxpack",
+      "pre": ["proc"],
+      "opt": [],
+      "post": ["pmux2shiftx", "muxpack"]
+    },
+
+    "_abc_doc": "ABC 脚本杠杆实验：用 synth_intel 的 -run 分段标签（begin:/family:/coarse:/map_bram:/map_ffram:/map_ffs:/map_luts:/map_cells:/check:）把官方 abc9 那一步换掉。主办方明确允许『可以调整 abc 的脚本』，且本项目观测到的最大杠杆就是 ABC（0.68→0.69 的 9.5%→24.6% 完全来自 ABC 变化）。注意：这些 pipeline 自带 backend_passes，会覆盖默认 backend。",
+
+    "ABC_baseline": {
+      "desc": "ABC 组内部基准：分段调用 synth_intel 但 abc 步骤与官方完全相同（应等于 B0 的 284）",
+      "id": "ABC_baseline",
+      "pre": [],
+      "opt": [],
+      "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -W 300",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_classic": {
+      "desc": "ABC 变体：用经典 abc 映射器（abc -lut 4）替换 abc9",
+      "id": "ABC_classic",
+      "pre": [],
+      "opt": [],
+      "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_w100": {
+      "desc": "ABC 变体：降低 abc9 的 effort（-W 100）",
+      "id": "ABC_w100",
+      "pre": [],
+      "opt": [],
+      "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -W 100",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_w1000": {
+      "desc": "ABC 变体：提高 abc9 的 effort（-W 1000），看是否还有面积可挖",
+      "id": "ABC_w1000",
+      "pre": [],
+      "opt": [],
+      "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -W 1000",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_fast": {
+      "desc": "ABC 变体：abc9 -fast（快速模式，通常更差，作为下界参考）",
+      "id": "ABC_fast",
+      "pre": [],
+      "opt": [],
+      "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -fast",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC_delay": {
+      "desc": "ABC 变体：指定延迟目标（-D 10），看面积/延迟权衡",
+      "id": "ABC_delay",
+      "pre": [],
+      "opt": [],
+      "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -W 300 -D 10",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
     }
   }
 }

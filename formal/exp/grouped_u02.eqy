@@ -1,0 +1,16 @@
+# grouped_u02.eqy —— 验证"手工跨位分组版"与原始 u02 功能等价
+# gold = 原始实现；gate = 分组改写。方向不能反（EQY 的 safe-replacement 语义）。
+[options]
+splitnets off
+
+[gold]
+read_verilog benchmarks/exp/e01_u02_base.v
+prep -top dut
+
+[gate]
+read_verilog benchmarks/exp/e02_u02_grouped.v
+prep -top dut
+
+[strategy simple]
+use sat
+depth 5

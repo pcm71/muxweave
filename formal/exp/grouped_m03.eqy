@@ -1,0 +1,15 @@
+# grouped_m03.eqy —— 验证时序用例的分组改写等价（含寄存器，验证周期行为一致）
+[options]
+splitnets off
+
+[gold]
+read_verilog benchmarks/exp/e04_m03_base.v
+prep -top dut
+
+[gate]
+read_verilog benchmarks/exp/e05_m03_grouped.v
+prep -top dut
+
+[strategy simple]
+use sat
+depth 5
