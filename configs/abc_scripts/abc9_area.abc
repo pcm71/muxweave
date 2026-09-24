@@ -1,0 +1,16 @@
+# abc9_area.abc —— 保持官方 abc9 映射器，只把 &if 改成面积优先（&if -a）
+#
+# 动机与依据：
+#   1. 官方流程用 abc9，它的脚本是 &scorr/&sweep/&dc2/&dch -f -r/&ps/&if/&mfs；
+#      而我们此前调的全是旧版 `abc` 的脚本 —— 换映射器会带来 20~50% 的 CPU 开销，超出 5% 门槛。
+#   2. 因此改在**同一个便宜的 abc9 映射器**内调面积参数：
+#      `&if` 支持 `-a`（面积优先，与旧版 if -a 同义）。
+#   3. 末尾的 `&mfs` 在官方流程里**每次都报错失效**
+#      （"Timing manager is given but there is no GIA of boxes."），
+#      本脚本将其移除，避免空转（不影响结果，只是省一点时间）。
+&scorr
+&sweep
+&dc2
+&dch -f -r
+&ps
+&if -W 300 -a -v

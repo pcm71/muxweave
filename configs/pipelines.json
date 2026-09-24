@@ -486,6 +486,53 @@
         "clean", "opt -fast", "autoname", "clean",
         "synth_intel -family cycloneiv -top @@TOP@@ -dff -run map_cells:check"
       ]
+    },
+
+    "_abc9_doc": "abc9 脚本变体：官方流程用 abc9（新版 & 命令、比经典 abc 便宜得多）。它的默认脚本是「&scorr; &sweep; &dc2; &dch -f -r; &ps; &if {W} {D} {R} -v; &mfs」。关键机会：① 在同一个便宜映射器内调 &if 的面积参数；② 官方末尾的 &mfs 每次都报错失效，可移除。目标是在面积与 ≤5% 开销之间同时达标。",
+
+    "ABC9_stock": {
+      "desc": "自洽性检查：把 abc9 默认脚本原文写成文件跑一遍，结果必须与 B0 完全一致",
+      "id": "ABC9_stock",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -W 300 -script @@REPO@@/configs/abc_scripts/abc9_stock.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC9_area": {
+      "desc": "★ abc9（同映射器、开销低）+ &if -a 面积优先，并移除失效的 &mfs",
+      "id": "ABC9_area",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -script @@REPO@@/configs/abc_scripts/abc9_area.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC9_area_A6": {
+      "desc": "abc9 + &if -a -A 6（面积恢复更彻底）",
+      "id": "ABC9_area_A6",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -script @@REPO@@/configs/abc_scripts/abc9_area_A6.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "ABC9_area_dc2": {
+      "desc": "abc9 + &if -a + 映射后再做一轮 &dc2",
+      "id": "ABC9_area_dc2",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -script @@REPO@@/configs/abc_scripts/abc9_area_dc2.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
     }
   }
 }

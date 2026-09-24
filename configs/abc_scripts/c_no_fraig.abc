@@ -1,0 +1,11 @@
+strash
+&get -n
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if
+mfs2
+lutpack -S 1

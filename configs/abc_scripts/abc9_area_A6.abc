@@ -1,0 +1,10 @@
+# abc9_area_A6.abc —— abc9 + 面积优先 + 更彻底的精确面积恢复（&if -a -A 6）
+#
+# 依据：旧版 `if -h` 中 -A 是"exact area recovery iterations"（默认 2）；
+#       &if 沿用同名选项。面积恢复更彻底，代价是稍多时间。
+&scorr
+&sweep
+&dc2
+&dch -f -r
+&ps
+&if -W 300 -a -A 6 -v

@@ -1,0 +1,15 @@
+# abc9_stock.abc —— abc9 默认脚本原文（自洽性检查用）
+#
+# 来源：`yosys -p "help abc9"` 中
+#   if no -script parameter is given, the following scripts are used:
+#       &scorr; &sweep; &dc2; &dch -f -r; &ps; &if {W} {D} {R} -v; &mfs
+# 并用 `abc9 -showtmp -nocleanup` 核对生成脚本，确认 {W}→`-W 300`、{D}{R} 为空。
+#
+# 用途：把它显式写成文件跑一遍，结果必须与官方 B0 完全一致。
+&scorr
+&sweep
+&dc2
+&dch -f -r
+&ps
+&if -W 300 -v
+&mfs

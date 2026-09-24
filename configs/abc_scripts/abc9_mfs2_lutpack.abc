@@ -1,0 +1,10 @@
+&scorr
+&sweep
+&dc2
+&dch -f -r
+&ps
+&if -W 300 -v
+&put
+mfs2
+lutpack -S 1
+&get -n

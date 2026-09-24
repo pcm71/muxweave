@@ -1,0 +1,12 @@
+# abc9_area_dc2.abc —— abc9 + 面积优先 + 映射后再做一轮 don't-care 化简
+#
+# 动机：$pmux 多选同时有效属于未定义（don't-care），映射后再跑一轮 &dc2
+#       有机会利用这些 don't-care 再消掉一些节点。
+#       注意这一步必须在 & 域（GIA 网络）里做，&if 之后网络仍是 GIA。
+&scorr
+&sweep
+&dc2
+&dch -f -r
+&ps
+&if -W 300 -a -v
+&dc2

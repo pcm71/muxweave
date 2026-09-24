@@ -1,0 +1,7 @@
+strash
+&get -n
+&fraig -x
+&put
+strash
+dch -f
+if
