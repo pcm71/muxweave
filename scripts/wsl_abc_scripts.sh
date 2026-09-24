@@ -23,7 +23,7 @@ mkdir -p runs
 #   不带参数时跑默认列表；带参数时只跑指定的 pipeline，便于分批迭代。
 DEFAULT_PIPELINES="B0 ABC_classic SCRIPT_baseline SCRIPT_dc2 SCRIPT_ifarea SCRIPT_nfresub SCRIPT_lutpack2 SCRIPT_nodretime"
 PIPELINES="${1:-$DEFAULT_PIPELINES}"
-CASES=$(ls benchmarks/unit/u0*.v benchmarks/mixed/m0*.v 2>/dev/null)
+CASES=$(ls benchmarks/unit/u0*.v benchmarks/mixed/m0*.v benchmarks/large/l*.v 2>/dev/null)
 
 echo "pipeline 列表：$PIPELINES"
 

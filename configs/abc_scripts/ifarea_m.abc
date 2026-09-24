@@ -1,0 +1,15 @@
+# ifarea_m.abc —— 面积优先 + 割集最小化（if -a -m）
+# 依据：`if -h` 说明 -m 是"cut minimization by removing vacuous variables"，
+#       去掉割集里的多余变量后，LUT 覆盖更容易合并 → 可能省 LUT。
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a -m
+mfs2
+lutpack -S 1

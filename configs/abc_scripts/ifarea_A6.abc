@@ -1,0 +1,15 @@
+# ifarea_A6.abc —— 面积优先 + 精确面积恢复迭代加倍（if -a -A 6）
+# 依据：`if -h` 说明 -A 是"exact area recovery iterations"（默认 2），
+#       题目只考面积，加大它可以更彻底地做面积恢复。
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a -A 6
+mfs2
+lutpack -S 1

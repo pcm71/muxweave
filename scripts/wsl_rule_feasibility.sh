@@ -12,26 +12,32 @@ P=/mnt/c/Users/LEGION/Desktop/PMUX/muxweave
 cd "$P" || exit 1
 mkdir -p runs
 
-echo "##################### 1) 综合对比（pipeline B0）#####################"
-rm -rf runs/e0*__B0__* 2>/dev/null
-for v in benchmarks/exp/e0*.v; do
+# 用法：bash scripts/wsl_rule_feasibility.sh [pipeline名（默认 B0）]
+#   换后端重测很重要：早先"跨位分组无收益"的结论是在默认 abc9 后端上得到的，
+#   换成调优后的 abc 脚本（SCRIPT_ifarea）后，结构变换可能就有效了 —— 两者可能互补。
+PIPE="${1:-B0}"
+echo "##################### 1) 综合对比（pipeline $PIPE）#####################"
+rm -rf runs/e0*__${PIPE}__* 2>/dev/null
+# 只跑 e01~e07 这些"可行性改写"用例；e09_u02_mutated 是负对照（模块名故意不是 dut），排除。
+for v in benchmarks/exp/e0[1-7]*.v; do
   name=$(basename "$v" .v)
-  if python3 scripts/run_case.py --case "$v" --top dut --pipeline B0 \
-       > "runs/feas_${name}.log" 2>&1; then
+  if python3 scripts/run_case.py --case "$v" --top dut --pipeline "$PIPE" \
+       > "runs/feas_${PIPE}_${name}.log" 2>&1; then
     printf '  %-22s ' "$name"
-    grep -oE "逻辑单元 : [0-9]+   DFF: [0-9]+" "runs/feas_${name}.log" | head -1
+    grep -oE "逻辑单元 : [0-9]+   DFF: [0-9]+" "runs/feas_${PIPE}_${name}.log" | head -1
   else
     printf '  %-22s FAIL\n' "$name"
-    tail -5 "runs/feas_${name}.log" | sed 's/^/      /'
+    tail -5 "runs/feas_${PIPE}_${name}.log" | sed 's/^/      /'
   fi
 done
 
 echo
-echo "=== 对比小结（逻辑单元）==="
-python3 - <<'PY'
-import json, glob, collections
+echo "=== 对比小结（逻辑单元，pipeline $PIPE）==="
+python3 - "$PIPE" <<'PY'
+import json, glob, sys
+pipe = sys.argv[1]
 latest = {}
-for p in glob.glob("runs/e0*__B0__*/result.json"):
+for p in glob.glob(f"runs/e0*__{pipe}__*/result.json"):
     d = json.load(open(p, encoding="utf-8"))
     k = (d["input"], d["pipeline"])
     if k not in latest or d["run_id"] > latest[k]["run_id"]:

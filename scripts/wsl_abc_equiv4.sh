@@ -24,10 +24,10 @@ LOGDIR="formal/abc_equiv/logs"
 mkdir -p "$LOGDIR" /tmp/eqv4
 TIMEOUT=150
 
-CASES="benchmarks/unit/u01_mux2_wide.v benchmarks/unit/u02_pmux4_shared_fields.v \
+CASES="${CASES_OVERRIDE:-benchmarks/unit/u01_mux2_wide.v benchmarks/unit/u02_pmux4_shared_fields.v \
 benchmarks/unit/u03_pmux4_const_and_default.v benchmarks/unit/u04_pmux8_narrow_onehot.v \
 benchmarks/unit/u05_negative_no_mux.v benchmarks/mixed/m01_decode_mask_pmux.v \
-benchmarks/mixed/m02_regfile_readback.v benchmarks/mixed/m03_registered_pmux.v"
+benchmarks/mixed/m02_regfile_readback.v benchmarks/mixed/m03_registered_pmux.v}"
 
 # 变体命令由参数决定（默认经典 abc）。用于验证任意 ABC 脚本/映射策略的保等价性。
 VARIANT="${1:-abc -lut 4}"

@@ -1,0 +1,15 @@
+# lutpackz.abc —— 面积优先 + LUT 打包放开共享与零代价替换（lutpack -S 2 -z）
+# 依据：`lutpack -h` 说明 -S 是"max number of LUT inputs shared"（默认 0，默认脚本用 1），
+#       -z 允许零代价替换。提高共享度理论上能减少 LUT 数。
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a
+mfs2
+lutpack -S 2 -z

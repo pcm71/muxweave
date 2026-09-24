@@ -1,0 +1,16 @@
+# mfs2_aggr.abc —— 面积优先 + 高强度 don't-care 优化（mfs2 -a -d -e）
+# 依据：`mfs2 -h` 说明 -a 按面积最小化、-d 做冗余消除、-e 启用高强度重代入。
+#       本题 $pmux 的"多选同时有效"是未定义（don't-care），mfs2 正是利用 don't-care 的优化，
+#       因此这是与题目语义最贴合的一组参数。
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a
+mfs2 -a -d -e
+lutpack -S 1

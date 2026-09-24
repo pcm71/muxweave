@@ -1,0 +1,15 @@
+# mfs2_deep.abc —— 面积优先 + 更彻底的 mfs2 窗口/努力（mfs2 -a -d -e -W 3 -M 600）
+# 依据：`mfs2 -h`：-W 是 TFO 层数（默认 2）、-M 是窗口最大节点数（默认 300）。
+#       加大窗口可能找到更多冗余，但会增加耗时（须守住 60s 门槛）。
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a
+mfs2 -a -d -e -W 3 -M 600
+lutpack -S 1

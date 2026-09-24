@@ -370,6 +370,122 @@
         "clean", "opt -fast", "autoname", "clean",
         "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
       ]
+    },
+
+    "_family_doc": "口径测试：synth_intel 的 -family 有 cycloneiv（Cyclone IV GX）与 cycloneive（Cyclone IV E）两个取值，主办方只说『统一映射为 Cyclone IV 系列网表』，未指明具体哪一个。两者网表可能不同，必须实测并作为口径问题向主办方确认。",
+
+    "FAM_cycloneive": {
+      "desc": "口径测试：官方流程但 -family cycloneive（Cyclone IV E），与 B0（cycloneiv/GX）对比",
+      "id": "FAM_cycloneive",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneive -top @@TOP@@ -run begin:map_luts",
+        "abc9 -lut 4 -W 300",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneive -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "FAM_cye_ifarea": {
+      "desc": "口径测试 + 调优脚本：cycloneive + if -a 面积优先",
+      "id": "FAM_cye_ifarea",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneive -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/if_area.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneive -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+
+    "_cand_pool_doc": "候选池第 2 批：按 ABC 各命令的**真实选项**（if -h / mfs2 -h / lutpack -h）定向构造。这些 pipeline 供 wsl_candidate_envelope.sh 组成候选池，逐用例取最优。",
+
+    "SCRIPT_ifarea_A6": {
+      "desc": "候选：if -a -A 6（面积优先 + 精确面积恢复迭代加倍）",
+      "id": "SCRIPT_ifarea_A6",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/ifarea_A6.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_ifarea_A6F3": {
+      "desc": "候选：if -a -A 6 -F 3（面积流恢复 + 精确恢复都加大）",
+      "id": "SCRIPT_ifarea_A6F3",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/ifarea_A6F3.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_ifarea_m": {
+      "desc": "候选：if -a -m（面积优先 + 割集最小化）",
+      "id": "SCRIPT_ifarea_m",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/ifarea_m.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_mfs2_aggr": {
+      "desc": "候选：mfs2 -a -d -e（don't-care 驱动的高强度面积优化，对口 $pmux 多选未定义）",
+      "id": "SCRIPT_mfs2_aggr",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/mfs2_aggr.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_lutpackz": {
+      "desc": "候选：lutpack -S 2 -z（放开 LUT 共享与零代价替换）",
+      "id": "SCRIPT_lutpackz",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/lutpackz.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_mfs2_deep": {
+      "desc": "候选：mfs2 -a -d -e -W 3 -M 600（加大 don't-care 优化窗口）",
+      "id": "SCRIPT_mfs2_deep",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/mfs2_deep.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+
+    "_new_lever_doc": "新杠杆测试：不再在 ABC 参数里打转，改测 synth_intel 自己的官方选项 -dff（把 DFF 交给 ABC 做**跨 FF 边界的时序优化**）。若能显著省单元，说明剩余空间在时序维度而不是组合映射维度。",
+
+    "DFF_off": {
+      "desc": "新杠杆：官方流程但带 -dff（ABC 做时序优化，跨 FF 边界）",
+      "id": "DFF_off",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -dff"
+      ]
+    },
+    "DFF_off_ifarea": {
+      "desc": "新杠杆组合：-dff + if -a 调优脚本（分段替换 abc 步骤）",
+      "id": "DFF_off_ifarea",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -dff -run begin:map_luts",
+        "abc -lut 4 -dff -script @@REPO@@/configs/abc_scripts/if_area.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -dff -run map_cells:check"
+      ]
     }
   }
 }
