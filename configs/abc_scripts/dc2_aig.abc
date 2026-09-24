@@ -1,0 +1,19 @@
+# dc2_aig.abc —— 在 AIG 上增加一轮 don't-care 化简（&dc2）
+#
+# 动机：$pmux 的"多路选择同时有效"是**未定义**（don't-care），
+#       理论上 dc2 能利用这些 don't-care 化简电路。这是针对本题语义的直接杠杆。
+# 与 baseline_lut4.abc 的唯一差异：在 &fraig -x 之后、&put 之前插入 &dc2。
+
+strash
+&get -n
+&fraig -x
+&dc2
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if
+mfs2
+lutpack -S 1

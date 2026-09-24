@@ -174,15 +174,78 @@ equiv_opt -assert -ignore-unknown-cells abc  -lut 4            # 或 abc9 -lut 4
 | `equiv_make` + `equiv_simple` + `equiv_status` | 1/8 PASS，其余报 unproven | 与上一行结论矛盾 → 该流程的 **FF 匹配没生效**（unproven 数恰好等于 DFF 数） |
 | `sat -seq 1`（有界） | 通过 | **但只证明 cycle 0，不足以覆盖全部时序行为**，故不采用 |
 
-### 5.3 下一步
+### 5.4 真正的 ABC 脚本文件实验（**最终方案**）
 
-1. **把 ABC 变体纳入正式实验**（等价性已证明，可以进成绩数据了）：
-   扩样本到 20~30 个（重点覆盖寄存器读回/状态字选择/配置译码），逐用例记录单元数、DFF、CPU 时间、内存
-2. **弄懂自定义 abc 脚本的正确写法**（含 LUT 库）：先用 `-showtmp`/`-nocleanup` 看清 Yosys
-   生成的临时 ABC 脚本与 LUT 库文件，再据此改写 —— 这是唯一还没被正确探索的空间
-3. **给最终 cycloneiv 网表出 EQY 正式报告**（提交前待办）：需加载器件库模型
-   （`-map` 或 `equiv_opt -map <cells_sim.v>`），以满足"官方 EQY 逐用例 PASS"的要求
-4. 保留全部负面结果证据（`runs/abc2_*.log`、`runs/bat_*.log`）：答辩时说明"哪些路试过、为什么不行"同样有价值
+#### 上一轮 5 个内联脚本为什么全劣化：找到了确切原因
+
+用 `-showtmp` 看 Yosys 实际发给 ABC 的命令，真相一目了然：
+
+```
+默认（abc -lut 4）                     自定义（-script "+strash,&get,-n,..."）
+ABC: + strash                          ABC: + strash &get -n &fraig -x &put scorr dc2 ...
+ABC: + &get -n                                 ↑ 整个脚本被当成「一行」发过去
+ABC: + &fraig -x
+...
+```
+
+`-script "+..."` 只把**逗号替换成空格**，而 ABC 的**命令分隔符是分号/换行**。
+所以内联写法等于只执行了 `strash` 加一堆垃圾参数，**脚本根本没跑** —— 这才是劣化 500 的原因。
+
+**正确做法：用真正的脚本文件**（`-script <file>`），一行一条命令。这也正是主办方要求提交的形态。
+探测还确认：**用 `-script <file>` 时 Yosys 仍会照常发送 `read_lut <lutdefs.txt>`**，LUT 库不会丢。
+
+#### 脚本文件清单与结果
+
+脚本放在 `configs/abc_scripts/`（可直接作为交付物提交）：
+
+| 脚本 | 与默认脚本的差异 | 合计 | 相对 B0 |
+|---|---|---|---|
+| `baseline_lut4.abc` | 默认脚本原文（自洽性检查用） | **263** | 省 21 —— **与 `abc -lut 4` 完全一致 ✓ 机制正确** |
+| **`if_area.abc`** | **`if` → `if -a`（面积优先映射）** | **259** | **★ 省 25（8.8%）** |
+| `ifarea_nodretime.abc` | `if -a` + 去掉 `dretime` | 259 | 省 25（无额外收益） |
+| `ifarea_lutpack2.abc` | `if -a` + `lutpack -S 2` | 259 | 省 25（无额外收益） |
+| `andif_area.abc` | 改用新版映射器 `&if -K 4 -a` | 259 | 省 25（与 `if -a` 等价） |
+| `ifarea_dc2.abc` | `if -a` + AIG 上的 `&dc2` | 260 | 省 24（略差，m02 反而 101→103） |
+| `dc2_aig.abc` | 默认 + `&dc2` | 263 | 省 21（dc2 无收益） |
+| `lutpack2.abc` / `no_dretime.abc` | 单改 `lutpack -S 2` / 去 `dretime` | 263 | 省 21（无收益） |
+| `nf_resub.abc` | 加 `&nf` / `&resub -K 6` | — | **无效**（`&resub` 选项语法不对，8/8 失败） |
+
+**最优：`if_area.abc` —— 259 个单元，比官方基线省 25 个（8.8%）。**
+
+逐用例收益（`if_area` vs B0）：
+
+| 用例 | B0 | `if -a` | 变化 |
+|---|---|---|---|
+| **m02_regfile_readback** | 120 | **101** | **−19（−15.8%）** |
+| **u05_negative_no_mux** | 20 | **16** | **−4（−20%）** |
+| **u04_pmux8_narrow_onehot** | 14 | **12** | **−2（−14.3%）** |
+| u01 / u02 / u03 / m01 / m03 | — | 同 | 0 |
+
+#### 等价性验证：**8/8 通过 + 负对照有效**
+
+用 5.2 的 `equiv_opt` 传递性方法验证 `abc -lut 4 -script configs/abc_scripts/if_area.abc`：
+
+```
+A 传递性证明 : 8/8        （变体保持等价 且 官方 abc9 保持等价）
+B 负对照     : 有效        （输出最低位取反的设计被判为不等价）
+```
+
+对应脚本 `scripts/wsl_abc_equiv4.sh`（已参数化，可验证任意变体命令）。
+
+#### 可交付成果
+
+1. **`configs/abc_scripts/if_area.abc`** —— 调优后的 ABC 脚本，**省 8.8% 且等价性已证明**，
+   满足主办方"调优较好的 abc 脚本需一并提交"的要求。
+2. **`configs/pipelines.json` 的 `SCRIPT_ifarea`** —— 把该脚本接入 `synth_intel` 分段流程的完整配置。
+3. 全部 10 个脚本文件（含失败的 `nf_resub.abc` 与各对照），保留完整实验记录。
+
+#### 下一步
+
+1. **扩样本到 20~30 个**，确认 8.8% 不是小样本偶然（重点覆盖寄存器读回/状态字选择/配置译码）
+2. 继续挖脚本空间：`if` 的其它选项（`-K`/`-n`/`-C`/`-F`）、`&if` 迭代次数、`mfs2` 参数、
+   以及 `-lut <w1>:<w2>` / `-luts` 成本模型（Cyclone IV 是 4 输入 LUT，成本模型可能有调整空间）
+3. 给最终 cycloneiv 网表出 EQY 正式报告（提交前待办）
+4. 在 `runs/` 保留全部扫描日志作为证据链
 
 ## 六、历史结论（第 1 轮，供对照）
 

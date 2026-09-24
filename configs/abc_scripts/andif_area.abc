@@ -1,0 +1,21 @@
+# andif_area.abc —— 用新版 ABC 映射器（&if）替代旧版 if，面积优先
+#
+# 动机：ABC 里 `if`（旧版）与 `&if`（新版，基于 & 系列命令）是两套映射器，
+#       新版在大电路上通常更好。这里在 &put 之后改用 &if -K 4 -a。
+# 注意：&if 需要先进入 & 系列网络（前面的 &get -n 之后网络已在 & 域内），
+#       因此这里保留 & 域命令、去掉旧版 if。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+&get -n
+&dch -f
+&if -K 4 -a
+&put
+mfs2
+lutpack -S 1

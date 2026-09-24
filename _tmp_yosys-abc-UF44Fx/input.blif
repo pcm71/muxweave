@@ -1,0 +1,229 @@
+.model netlist
+.inputs ys__n0 ys__n2 ys__n9 ys__n11 ys__n14 ys__n22 ys__n23 ys__n30 ys__n31 ys__n38 ys__n39 ys__n46 ys__n47 ys__n48 ys__n55 ys__n56 ys__n57 ys__n64 ys__n65 ys__n66 ys__n73 ys__n74
+.outputs ys__n17 ys__n25 ys__n33 ys__n41 ys__n50 ys__n59 ys__n68 ys__n79
+# ys__n0     \sel [0]
+# ys__n1     $auto$rtlil.cc:3488:NotGate$206
+# ys__n2     \sel [1]
+# ys__n3     $auto$rtlil.cc:3488:NotGate$208
+# ys__n4     $auto$simplemap.cc:189:logic_reduce$180
+# ys__n5     $auto$simplemap.cc:465:simplemap_pmux$179
+# ys__n6     $auto$simplemap.cc:189:logic_reduce$182
+# ys__n7     $auto$simplemap.cc:465:simplemap_pmux$175
+# ys__n8     $auto$simplemap.cc:465:simplemap_pmux$177
+# ys__n9     \a [7]
+# ys__n10    $procmux$8_CMP
+# ys__n11    \c [7]
+# ys__n12    $procmux$7_CMP
+# ys__n13    $procmux$6_CMP
+# ys__n14    \a [6]
+# ys__n15    $auto$simplemap.cc:189:logic_reduce$171
+# ys__n16    $auto$simplemap.cc:189:logic_reduce$95
+# ys__n17    \y [6]
+# ys__n18    $auto$simplemap.cc:189:logic_reduce$169
+# ys__n19    $auto$simplemap.cc:465:simplemap_pmux$168
+# ys__n20    $auto$simplemap.cc:465:simplemap_pmux$164
+# ys__n21    $auto$simplemap.cc:465:simplemap_pmux$166
+# ys__n22    \c [6]
+# ys__n23    \a [5]
+# ys__n24    $auto$simplemap.cc:189:logic_reduce$160
+# ys__n25    \y [5]
+# ys__n26    $auto$simplemap.cc:189:logic_reduce$158
+# ys__n27    $auto$simplemap.cc:465:simplemap_pmux$157
+# ys__n28    $auto$simplemap.cc:465:simplemap_pmux$153
+# ys__n29    $auto$simplemap.cc:465:simplemap_pmux$155
+# ys__n30    \c [5]
+# ys__n31    \a [4]
+# ys__n32    $auto$simplemap.cc:189:logic_reduce$149
+# ys__n33    \y [4]
+# ys__n34    $auto$simplemap.cc:189:logic_reduce$147
+# ys__n35    $auto$simplemap.cc:465:simplemap_pmux$146
+# ys__n36    $auto$simplemap.cc:465:simplemap_pmux$142
+# ys__n37    $auto$simplemap.cc:465:simplemap_pmux$144
+# ys__n38    \c [4]
+# ys__n39    \a [3]
+# ys__n40    $auto$simplemap.cc:189:logic_reduce$138
+# ys__n41    \y [3]
+# ys__n42    $auto$simplemap.cc:189:logic_reduce$136
+# ys__n43    $auto$simplemap.cc:465:simplemap_pmux$135
+# ys__n44    $auto$simplemap.cc:465:simplemap_pmux$131
+# ys__n45    $auto$simplemap.cc:465:simplemap_pmux$133
+# ys__n46    \b [3]
+# ys__n47    \d [3]
+# ys__n48    \a [2]
+# ys__n49    $auto$simplemap.cc:189:logic_reduce$127
+# ys__n50    \y [2]
+# ys__n51    $auto$simplemap.cc:189:logic_reduce$125
+# ys__n52    $auto$simplemap.cc:465:simplemap_pmux$124
+# ys__n53    $auto$simplemap.cc:465:simplemap_pmux$120
+# ys__n54    $auto$simplemap.cc:465:simplemap_pmux$122
+# ys__n55    \b [2]
+# ys__n56    \d [2]
+# ys__n57    \a [1]
+# ys__n58    $auto$simplemap.cc:189:logic_reduce$116
+# ys__n59    \y [1]
+# ys__n60    $auto$simplemap.cc:189:logic_reduce$114
+# ys__n61    $auto$simplemap.cc:465:simplemap_pmux$113
+# ys__n62    $auto$simplemap.cc:465:simplemap_pmux$109
+# ys__n63    $auto$simplemap.cc:465:simplemap_pmux$111
+# ys__n64    \b [1]
+# ys__n65    \d [1]
+# ys__n66    \a [0]
+# ys__n67    $auto$simplemap.cc:189:logic_reduce$105
+# ys__n68    \y [0]
+# ys__n69    $auto$simplemap.cc:189:logic_reduce$103
+# ys__n70    $auto$simplemap.cc:465:simplemap_pmux$102
+# ys__n71    $auto$simplemap.cc:465:simplemap_pmux$98
+# ys__n72    $auto$simplemap.cc:465:simplemap_pmux$100
+# ys__n73    \b [0]
+# ys__n74    \d [0]
+# ys__n75    $auto$simplemap.cc:189:logic_reduce$93
+# ys__n76    $auto$simplemap.cc:277:simplemap_eqne$87
+# ys__n77    $auto$simplemap.cc:277:simplemap_eqne$199
+# ys__n78    $auto$simplemap.cc:277:simplemap_eqne$189
+# ys__n79    \y [7]
+.names ys__n0 ys__n1
+0 1
+.names ys__n2 ys__n3
+0 1
+.names ys__n7 ys__n8 ys__n4
+-1 1
+1- 1
+.names ys__n9 ys__n10 ys__n5
+11 1
+.names ys__n4 ys__n5 ys__n6
+-1 1
+1- 1
+.names ys__n11 ys__n13 ys__n7
+11 1
+.names ys__n11 ys__n12 ys__n8
+11 1
+.names ys__n77 ys__n10
+0 1
+.names ys__n78 ys__n12
+0 1
+.names ys__n76 ys__n13
+0 1
+.names ys__n18 ys__n19 ys__n15
+-1 1
+1- 1
+.names ys__n75 ys__n10 ys__n16
+-1 1
+1- 1
+.names ys__n14 ys__n15 ys__n16 ys__n17
+1-0 1
+-11 1
+.names ys__n20 ys__n21 ys__n18
+-1 1
+1- 1
+.names ys__n14 ys__n10 ys__n19
+11 1
+.names ys__n22 ys__n13 ys__n20
+11 1
+.names ys__n22 ys__n12 ys__n21
+11 1
+.names ys__n26 ys__n27 ys__n24
+-1 1
+1- 1
+.names ys__n23 ys__n24 ys__n16 ys__n25
+1-0 1
+-11 1
+.names ys__n28 ys__n29 ys__n26
+-1 1
+1- 1
+.names ys__n23 ys__n10 ys__n27
+11 1
+.names ys__n30 ys__n13 ys__n28
+11 1
+.names ys__n30 ys__n12 ys__n29
+11 1
+.names ys__n34 ys__n35 ys__n32
+-1 1
+1- 1
+.names ys__n31 ys__n32 ys__n16 ys__n33
+1-0 1
+-11 1
+.names ys__n36 ys__n37 ys__n34
+-1 1
+1- 1
+.names ys__n31 ys__n10 ys__n35
+11 1
+.names ys__n38 ys__n13 ys__n36
+11 1
+.names ys__n38 ys__n12 ys__n37
+11 1
+.names ys__n42 ys__n43 ys__n40
+-1 1
+1- 1
+.names ys__n39 ys__n40 ys__n16 ys__n41
+1-0 1
+-11 1
+.names ys__n44 ys__n45 ys__n42
+-1 1
+1- 1
+.names ys__n46 ys__n10 ys__n43
+11 1
+.names ys__n47 ys__n13 ys__n44
+11 1
+.names ys__n46 ys__n12 ys__n45
+11 1
+.names ys__n51 ys__n52 ys__n49
+-1 1
+1- 1
+.names ys__n48 ys__n49 ys__n16 ys__n50
+1-0 1
+-11 1
+.names ys__n53 ys__n54 ys__n51
+-1 1
+1- 1
+.names ys__n55 ys__n10 ys__n52
+11 1
+.names ys__n56 ys__n13 ys__n53
+11 1
+.names ys__n55 ys__n12 ys__n54
+11 1
+.names ys__n60 ys__n61 ys__n58
+-1 1
+1- 1
+.names ys__n57 ys__n58 ys__n16 ys__n59
+1-0 1
+-11 1
+.names ys__n62 ys__n63 ys__n60
+-1 1
+1- 1
+.names ys__n64 ys__n10 ys__n61
+11 1
+.names ys__n65 ys__n13 ys__n62
+11 1
+.names ys__n64 ys__n12 ys__n63
+11 1
+.names ys__n69 ys__n70 ys__n67
+-1 1
+1- 1
+.names ys__n66 ys__n67 ys__n16 ys__n68
+1-0 1
+-11 1
+.names ys__n71 ys__n72 ys__n69
+-1 1
+1- 1
+.names ys__n73 ys__n10 ys__n70
+11 1
+.names ys__n74 ys__n13 ys__n71
+11 1
+.names ys__n73 ys__n12 ys__n72
+11 1
+.names ys__n13 ys__n12 ys__n75
+-1 1
+1- 1
+.names ys__n1 ys__n3 ys__n76
+-1 1
+1- 1
+.names ys__n1 ys__n2 ys__n77
+-1 1
+1- 1
+.names ys__n0 ys__n3 ys__n78
+-1 1
+1- 1
+.names ys__n9 ys__n6 ys__n16 ys__n79
+1-0 1
+-11 1
+.end

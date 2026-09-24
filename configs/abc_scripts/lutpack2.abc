@@ -1,0 +1,17 @@
+# lutpack2.abc —— LUT 打包提高档位（lutpack -S 2）
+#
+# 动机：lutpack 负责把映射结果打包成实际 LUT，档位更高可能减少 LUT 数（也可能更慢）。
+# 与 baseline_lut4.abc 的唯一差异：`lutpack -S 1` → `lutpack -S 2`。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if
+mfs2
+lutpack -S 2

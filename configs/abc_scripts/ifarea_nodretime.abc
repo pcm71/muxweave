@@ -1,0 +1,17 @@
+# ifarea_nodretime.abc —— 面积优先映射 + 去掉延迟重定时
+#
+# 组合动机：`if -a`（面积优先）已比默认脚本省 25 个单元；
+#           dretime 是为时序服务的，题目只看面积，去掉它可能再省一点。
+# 与 if_area.abc 的唯一差异：移除 dretime。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+strash
+dch -f
+if -a
+mfs2
+lutpack -S 1

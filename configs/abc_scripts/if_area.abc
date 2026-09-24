@@ -1,0 +1,18 @@
+# if_area.abc —— 映射步骤改为面积优先（if -a）
+#
+# 动机：题目评分只看单元数（面积），不看延迟；
+#       默认脚本用的是 `if`（默认倾向），改成面积优先可能更省单元。
+# 与 baseline_lut4.abc 的唯一差异：`if` → `if -a`。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a
+mfs2
+lutpack -S 1

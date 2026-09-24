@@ -1,0 +1,20 @@
+# ifarea_dc2.abc —— 面积优先映射 + AIG 上的 don't-care 化简
+#
+# 组合动机：把两个"看起来有道理"的杠杆叠加：
+#   ① if -a  面积优先映射（单独已验证省 25）
+#   ② &dc2   AIG don't-care 化简（针对 $pmux 多选未定义，单独验证为持平）
+# 若叠加后优于 25，说明两者互补；若持平，说明 dc2 的效果被 if -a 覆盖。
+
+strash
+&get -n
+&fraig -x
+&dc2
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a
+mfs2
+lutpack -S 1

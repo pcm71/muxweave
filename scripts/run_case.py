@@ -282,6 +282,7 @@ def do_run(args) -> int:
 
     repl = {
         "@@TOP@@": top,
+        "@@REPO@@": ROOT,
         "@@STAT_JSON@@": stat_json,
         "@@ANALYZE_JSON@@": analyze_json,
         "@@OPT_JSON@@": opt_json,

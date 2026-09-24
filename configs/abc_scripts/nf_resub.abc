@@ -1,0 +1,21 @@
+# nf_resub.abc —— 映射前增加节点因式分解与重代入（&nf / &resub）
+#
+# 动机：更彻底的结构化化简，可能让 LUT 打包更省。
+# 与 baseline_lut4.abc 的差异：在 dch -f 之前插入 &get -n / &nf / &resub / &put。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+&get -n
+&nf
+&resub -K 6
+&put
+dch -f
+if
+mfs2
+lutpack -S 1

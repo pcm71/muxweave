@@ -1,0 +1,24 @@
+# baseline_lut4.abc —— abc 在 -lut 4（单一 LUT 尺寸）下的**默认脚本原文**
+#
+# 用途：把默认脚本显式写成文件，作为"自定义脚本"实验的基准。
+#       用它跑出来的单元数必须与 `abc -lut 4` 完全一致（自洽性检查）。
+#
+# 来源：`yosys -p "help abc"` 中 "for -lut/-luts (only one LUT size)" 一段：
+#   strash; &get -n; &fraig -x; &put; scorr; dc2; dretime; strash;
+#        dch -f; if; mfs2; lutpack -S 1
+#
+# 注意：ABC 脚本**一行一条命令**（不要用分号挤在一行——
+#       内联写法 `-script "+a;b;c"` 会被 Yosys 的脚本解析器抢先按分号拆开）。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if
+mfs2
+lutpack -S 1

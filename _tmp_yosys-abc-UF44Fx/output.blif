@@ -1,0 +1,47 @@
+# Benchmark "netlist" written by ABC on Thu Sep 24 16:48:51 2026
+.model netlist
+.inputs ys__n0 ys__n2 ys__n9 ys__n11 ys__n14 ys__n22 ys__n23 ys__n30 \
+ ys__n31 ys__n38 ys__n39 ys__n46 ys__n47 ys__n48 ys__n55 ys__n56 ys__n57 \
+ ys__n64 ys__n65 ys__n66 ys__n73 ys__n74
+.outputs ys__n17 ys__n25 ys__n33 ys__n41 ys__n50 ys__n59 ys__n68 ys__n79
+.names ys__n14 ys__n22 ys__n2 ys__n17
+-11 1
+1-0 1
+.names ys__n23 ys__n30 ys__n2 ys__n25
+-11 1
+1-0 1
+.names ys__n31 ys__n38 ys__n2 ys__n33
+-11 1
+1-0 1
+.names ys__n0 ys__n2 ys__n39 new_n36 ys__n41
+---0 1
+001- 1
+.names ys__n47 ys__n46 ys__n0 ys__n2 new_n36
+-101 0
+-110 0
+1-11 0
+.names ys__n0 ys__n2 ys__n48 new_n38 ys__n50
+---0 1
+001- 1
+.names ys__n56 ys__n55 ys__n0 ys__n2 new_n38
+-101 0
+-110 0
+1-11 0
+.names ys__n0 ys__n2 ys__n57 new_n40 ys__n59
+---0 1
+001- 1
+.names ys__n65 ys__n64 ys__n0 ys__n2 new_n40
+-101 0
+-110 0
+1-11 0
+.names ys__n0 ys__n2 ys__n66 new_n42 ys__n68
+---0 1
+001- 1
+.names ys__n74 ys__n73 ys__n0 ys__n2 new_n42
+-101 0
+-110 0
+1-11 0
+.names ys__n9 ys__n11 ys__n2 ys__n79
+-11 1
+1-0 1
+.end

@@ -1,0 +1,17 @@
+# ifarea_lutpack2.abc —— 面积优先映射 + LUT 打包提高档位
+#
+# 组合动机：if -a 决定"映射成什么结构"，lutpack 决定"怎么打包成 LUT"，
+#           两者作用层次不同，可能互补。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+dretime
+strash
+dch -f
+if -a
+mfs2
+lutpack -S 2

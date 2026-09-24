@@ -29,6 +29,11 @@ benchmarks/unit/u03_pmux4_const_and_default.v benchmarks/unit/u04_pmux8_narrow_o
 benchmarks/unit/u05_negative_no_mux.v benchmarks/mixed/m01_decode_mask_pmux.v \
 benchmarks/mixed/m02_regfile_readback.v benchmarks/mixed/m03_registered_pmux.v"
 
+# 变体命令由参数决定（默认经典 abc）。用于验证任意 ABC 脚本/映射策略的保等价性。
+VARIANT="${1:-abc -lut 4}"
+LABEL="${2:-classic}"
+echo "验证变体：$VARIANT   （标签 $LABEL）"
+
 check_one() { # $1=case $2=命令 $3=标签
   local v="$1" cmd="$2" tag="$3"
   local top; top=$(basename "$v" .v)
@@ -55,7 +60,7 @@ ok=0; total=0
 for v in $CASES; do
   top=$(basename "$v" .v)
   total=$((total+1))
-  r1=$(check_one "$v" "abc -lut 4" "abc")
+  r1=$(check_one "$v" "$VARIANT" "$LABEL")
   r2=$(check_one "$v" "abc9 -lut 4 -W 300" "abc9")
   if [ "$r1" = "PASS" ] && [ "$r2" = "PASS" ]; then verdict="✓ 等价"; ok=$((ok+1)); else verdict="✗ 需查"; fi
   printf '%-30s %-14s %-14s %s\n' "$top" "$r1" "$r2" "$verdict"

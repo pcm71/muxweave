@@ -1,0 +1,16 @@
+# no_dretime.abc —— 去掉延迟重定时（dretime）
+#
+# 动机：题目只看面积；dretime 是为时序优化服务的，去掉它可能让面积更小。
+# 与 baseline_lut4.abc 的唯一差异：移除 `dretime` 一行。
+
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+strash
+dch -f
+if
+mfs2
+lutpack -S 1

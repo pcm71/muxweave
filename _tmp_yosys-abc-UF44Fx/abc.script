@@ -1,0 +1,33 @@
+echo + read_blif "_tmp_yosys-abc-UF44Fx/input.blif";
+read_blif "_tmp_yosys-abc-UF44Fx/input.blif";
+echo + read_lut /tmp/yosys-abc-bNf0wz/lutdefs.txt;
+read_lut /tmp/yosys-abc-bNf0wz/lutdefs.txt;
+echo + strash;
+strash;
+echo + &get -n;
+&get -n;
+echo + &fraig -x;
+&fraig -x;
+echo + &put;
+&put;
+echo + scorr;
+scorr;
+echo + dc2;
+dc2;
+echo + dretime;
+dretime;
+echo + strash;
+strash;
+echo + dch -f;
+dch -f;
+echo + if;
+if;
+echo + mfs2;
+mfs2;
+echo + lutpack -S 1;
+lutpack -S 1;
+echo + write_blif _tmp_yosys-abc-UF44Fx/output.blif;
+write_blif _tmp_yosys-abc-UF44Fx/output.blif;
+echo;
+echo "YOSYS_ABC_DONE"
+

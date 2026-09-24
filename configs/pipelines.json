@@ -257,6 +257,119 @@
         "clean", "opt -fast", "autoname", "clean",
         "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
       ]
+    },
+
+    "_abc_script_file_doc": "以下用**真正的 ABC 脚本文件**（configs/abc_scripts/*.abc）替换默认脚本。这是主办方点名要求提交的『调优 abc 脚本』形态。注意：内联写法 -script \"+a;b;c\" 会被 Yosys 脚本解析器按分号拆开，所以必须用文件。已实测：用 -script 时 Yosys 仍会照常发送 read_lut <lutdefs.txt>。",
+
+    "SCRIPT_baseline": {
+      "desc": "自洽性检查：把 abc 默认 -lut 脚本原文写成文件跑一遍，结果必须与 ABC_classic 的 263 完全一致",
+      "id": "SCRIPT_baseline",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/baseline_lut4.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_dc2": {
+      "desc": "ABC 脚本：在 AIG 上增加一轮 &dc2（don't-care 化简）——针对 $pmux 多选未定义的杠杆",
+      "id": "SCRIPT_dc2",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/dc2_aig.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_ifarea": {
+      "desc": "ABC 脚本：映射改面积优先（if -a）",
+      "id": "SCRIPT_ifarea",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/if_area.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_nfresub": {
+      "desc": "ABC 脚本：映射前加节点因式分解与重代入（&nf / &resub -K 6）",
+      "id": "SCRIPT_nfresub",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/nf_resub.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_lutpack2": {
+      "desc": "ABC 脚本：LUT 打包提到 -S 2",
+      "id": "SCRIPT_lutpack2",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/lutpack2.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_nodretime": {
+      "desc": "ABC 脚本：去掉 dretime（延迟重定时，与面积无关）",
+      "id": "SCRIPT_nodretime",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/no_dretime.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_ifarea_nodretime": {
+      "desc": "ABC 脚本：if -a 面积优先 + 去掉 dretime（两个面积向改动的组合）",
+      "id": "SCRIPT_ifarea_nodretime",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/ifarea_nodretime.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_ifarea_dc2": {
+      "desc": "ABC 脚本：if -a + AIG 上的 &dc2 组合",
+      "id": "SCRIPT_ifarea_dc2",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/ifarea_dc2.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_ifarea_lutpack2": {
+      "desc": "ABC 脚本：if -a + lutpack -S 2 组合",
+      "id": "SCRIPT_ifarea_lutpack2",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/ifarea_lutpack2.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_andif_area": {
+      "desc": "ABC 脚本：改用新版映射器 &if -K 4 -a（面积优先）",
+      "id": "SCRIPT_andif_area",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/andif_area.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
     }
   }
 }
