@@ -1,0 +1,10 @@
+strash
+&get -n
+&fraig -x
+&put
+scorr
+dc2
+strash
+dch -f
+if
+lutpack -S 1

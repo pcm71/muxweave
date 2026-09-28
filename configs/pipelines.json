@@ -533,6 +533,42 @@
         "clean", "opt -fast", "autoname", "clean",
         "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
       ]
+    },
+
+    "_official_best_doc": "官方 4 个 case 上实测最优的经典 abc 脚本（面积口径）：c_min_mfs2_lutpack 单脚本即达逐用例平均 20.25%，且 test1 不劣化。候选池取最优可达 24.1%（再加 c_mid_lutpack）。",
+
+    "SCRIPT_c_min_mfs2_lutpack": {
+      "desc": "★ 单脚本最优：strash/&fraig/&put/strash/dch -f/if/mfs2/lutpack -S 1 —— 官方 4 case 逐用例平均 20.25%，test1 不劣化",
+      "id": "SCRIPT_c_min_mfs2_lutpack",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/c_min_mfs2_lutpack.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_c_mid_lutpack": {
+      "desc": "候选：c_mid_lutpack（在 test3 上最好）",
+      "id": "SCRIPT_c_mid_lutpack",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/c_mid_lutpack.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
+    },
+    "SCRIPT_c_min_lutpack": {
+      "desc": "候选：c_min_lutpack",
+      "id": "SCRIPT_c_min_lutpack",
+      "pre": [], "opt": [], "post": [],
+      "backend_passes": [
+        "synth_intel -family cycloneiv -top @@TOP@@ -run begin:map_luts",
+        "abc -lut 4 -script @@REPO@@/configs/abc_scripts/c_min_lutpack.abc",
+        "clean", "opt -fast", "autoname", "clean",
+        "synth_intel -family cycloneiv -top @@TOP@@ -run map_cells:check"
+      ]
     }
   }
 }

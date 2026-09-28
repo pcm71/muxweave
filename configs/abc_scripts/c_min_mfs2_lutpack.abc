@@ -1,0 +1,9 @@
+strash
+&get -n
+&fraig -x
+&put
+strash
+dch -f
+if
+mfs2
+lutpack -S 1

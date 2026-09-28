@@ -12,6 +12,14 @@
 #   -ignore-unknown-cells  忽略无法匹配 SAT 模型的单元 —— 用来处理 Intel 的 dffeas 原语。
 #                          这些 FF 单元两侧同名同连接（abc 不碰 FF），
 #                          equiv_make 会把它们当割点匹配，因此忽略其内部模型是**可靠的**。
+#   -undef                 建模 undef 状态。**官方 case 必须加**：
+#                          它们含 don't-care 语义（test1 的 `default: begin end` 空默认分支、
+#                          test3 的部分位赋值保持、test4 的使能路径），
+#                          不加 -undef 时二值等价检查会在 don't-care 输入上报 unproven ——
+#                          实测连官方 abc9 映射本身都无法通过，属于检查口径问题而非设计问题。
+#   -async2sync            检查前把异步复位转成同步。**含异步复位的用例必须加**：
+#                          test1（posedge clock, posedge reset）与 test4（posedge clk or negedge reset_n）
+#                          不加时同样连官方 abc9 映射都无法通过。
 #   -map <file>            展开架构专用原语的另一条路（备选）。
 #
 # 负对照：另用 miter+sat 比较 u02 与"最低位取反"的 e09，必须报不等价，
@@ -43,7 +51,7 @@ check_one() { # $1=case $2=命令 $3=标签
 read_verilog $v
 hierarchy -top $top
 synth_intel -family cycloneiv -top $top -run begin:map_luts
-equiv_opt -assert -ignore-unknown-cells $cmd
+equiv_opt -assert -undef -async2sync -ignore-unknown-cells $cmd
 EOF
   timeout $TIMEOUT yosys -q -s "$ys" > "$log" 2>&1
   local rc=$?

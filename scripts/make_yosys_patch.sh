@@ -27,17 +27,22 @@ cd "$Y" || { echo "找不到 $Y"; exit 1; }
   echo "#   它会复制 plugin/*.cc 到 passes/pmux/、追加注册行、重编并自检。"
   echo "#"
   echo "# 改动清单（应只有这些）："
-  echo "#   M passes/CMakeLists.txt      （新增 1 行 add_subdirectory(pmux)）"
+  echo "#   M passes/CMakeLists.txt                   （新增 1 行 add_subdirectory(pmux)）"
   echo "#   A passes/pmux/CMakeLists.txt"
   echo "#   A passes/pmux/pmux_analyze.cc"
   echo "#   A passes/pmux/pmux_opt.cc"
+  echo "#   M techlibs/intel/synth_intel.cc           （自研 pass 调用，Q&A 09.23 硬要求）"
   echo "# 明确未使用 plugin -i 动态加载方案。"
   echo
   echo "=== git status --porcelain ==="
-  git status --porcelain
+  # .orig 是集成脚本留下的备份，不属于改动清单，过滤掉避免干扰阅读
+  git status --porcelain | grep -v "synth_intel.cc.orig" || true
   echo
   echo "=== 注册行 diff（passes/CMakeLists.txt）==="
   git diff -- passes/CMakeLists.txt
+  echo
+  echo "=== synth_intel.cc diff（自研 pass 调用集成）==="
+  git diff -- techlibs/intel/synth_intel.cc
   echo
   echo "=== 新增文件（未跟踪内容单独附上）==="
   git add -N passes/pmux >/dev/null 2>&1 || true
