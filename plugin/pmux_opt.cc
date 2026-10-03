@@ -208,6 +208,11 @@ static const char *SCRIPT_PRIMARY =
 static const char *SCRIPT_ALT1 =
     "strash\n&get -n\n&fraig -x\n&put\nscorr\ndc2\nstrash\ndch -f\nif\nlutpack -S 1\n";
 
+/* 规模护栏默认阈值（说明见候选表处）：超过该 DFF 数就保持官方 abc9 路径。
+ * 依据：官方 4 个 case 实测 —— test1（222 DFF）经典 abc **面积 0 收益**但 CPU +173%；
+ *       test2/3/4（0/17/10 DFF）面积收益 40.0%/7.7%/33.3%，开销仅 +18~26%。 */
+static const int DEFAULT_DFF_GUARD = 64;
+
 /* ------------------------------------------------------------------ */
 /* pass 本体                                                          */
 /* ------------------------------------------------------------------ */
@@ -234,6 +239,10 @@ struct PmuxOptPass : public Pass {
         log("    -dff\n");
         log("        把 DFF 一并交给 ABC 做时序优化（与 synth_intel -dff 一致）。\n");
         log("\n");
+        log("    -dff-guard <n>\n");
+        log("        规模护栏阈值：DFF 数超过 n 时保持官方 abc9 路径。默认 64。\n");
+        log("        依据：经典 abc 在大电路上面积收益消失而开销剧增（实测 222 DFF 时 0 收益 / CPU +173%%）。\n");
+        log("\n");
         log("    -dry-run\n");
         log("        只分析并打印将要执行的候选，不改变网表。\n");
         log("\n");
@@ -251,6 +260,7 @@ struct PmuxOptPass : public Pass {
     {
         std::string json_file;
         int candidates = 1;
+        int dff_guard_opt = 0;
         bool dff = false, dry_run = false, quiet = false, analyze_only = false;
 
         size_t argidx;
@@ -258,6 +268,7 @@ struct PmuxOptPass : public Pass {
             std::string a = args[argidx];
             if (a == "-json" && argidx + 1 < args.size()) { json_file = args[++argidx]; continue; }
             if (a == "-candidates" && argidx + 1 < args.size()) { candidates = atoi(args[++argidx].c_str()); continue; }
+            if (a == "-dff-guard" && argidx + 1 < args.size()) { dff_guard_opt = atoi(args[++argidx].c_str()); continue; }
             if (a == "-dff") { dff = true; continue; }
             if (a == "-dry-run") { dry_run = true; continue; }
             if (a == "-analyze-only") { analyze_only = true; continue; }
@@ -301,9 +312,23 @@ struct PmuxOptPass : public Pass {
         /* ---------- 2) 候选表 ---------- */
         struct Cand { std::string name, tag; std::string script; bool is_abc9; };
         std::vector<Cand> pool;
-        pool.push_back({ "pmux-primary", "primary", SCRIPT_PRIMARY, false });
-        if (candidates >= 2) pool.push_back({ "official-abc9", "", "", true });
-        if (candidates >= 3) pool.push_back({ "pmux-alt1", "alt1", SCRIPT_ALT1, false });
+
+        /* 规模护栏：大电路上经典 abc 无面积收益却开销剧增（实测 test1：0 收益 / CPU +173%），
+         * 因此超过阈值时直接保持官方 abc9 路径。
+         * 注意用 **map_luts 处的实时 DFF 数**（dff_before），不能用 coarse 阶段记录的特征值 ——
+         * 后者在 test1 上只有 21（多数触发器由后续 map_ffram/map_ffs 生成），会漏判。 */
+        const int dff_guard = (dff_guard_opt > 0) ? dff_guard_opt : DEFAULT_DFF_GUARD;
+        const bool guarded = (dff_before > dff_guard);
+        if (guarded) {
+            pool.push_back({ "official-abc9", "", "", true });
+            if (!quiet)
+                log("pmux_opt: DFF=%d 超过规模护栏 %d ⇒ 保持官方 abc9 路径（避免无收益的高开销）\n",
+                    dff_before, dff_guard);
+        } else {
+            pool.push_back({ "pmux-primary", "primary", SCRIPT_PRIMARY, false });
+            if (candidates >= 2) pool.push_back({ "official-abc9", "", "", true });
+            if (candidates >= 3) pool.push_back({ "pmux-alt1", "alt1", SCRIPT_ALT1, false });
+        }
 
         std::vector<std::string> tmp_files;
         for (auto &c : pool) {
@@ -335,6 +360,18 @@ struct PmuxOptPass : public Pass {
         int winner_cells = -1;
 
         if (!dry_run) {
+            if (pool.size() == 1) {
+                /* 只有一个候选（含规模护栏场景）⇒ 直接执行，不走 save/load 候选机制。
+                 * 这样产物与"官方流程直接跑同一条映射命令"**逐字节相同**，
+                 * 等价性成为平凡事实（可哈希比对），也省掉一次 save/load 的开销。 */
+                Pass::call(design, build_cmd(pool[0]));
+                winner_cells = count_logic_cells(design);
+                winner = pool[0].name;
+                results.push_back({ pool[0].name, winner_cells });
+                if (!quiet)
+                    log("pmux_opt:   候选 %-14s 逻辑单元=%d（单候选，直通）\n",
+                        pool[0].name.c_str(), winner_cells);
+            } else {
             /* 保存未映射状态；design -load 不消耗存档，可反复恢复 */
             Pass::call(design, "design -save pmux_opt_pre");
 
@@ -367,6 +404,7 @@ struct PmuxOptPass : public Pass {
             snprintf(bestname, sizeof(bestname), "pmux_opt_cand%d", best_idx);
             std::vector<std::string> loadbest = { "design", "-load", bestname };
             Pass::call(design, loadbest);
+            }   /* end else（多候选） */
         }
 
         const int dff_after = count_dff_cells(design);
