@@ -11,7 +11,7 @@
 |---|---|---|
 | 版本锁定（0.68/0.69 二选一并全队统一） | ✅ PASS | `VERSION_LOCK.md` 第 2 节全部回填 |
 | **pass 编入 Yosys 主程序**（本周唯一硬关卡） | ✅ PASS | `runs/REQ10_integration_evidence.md` |
-| Tcl 支持（题目要求自定义 Tcl 命令） | ✅ PASS | CMake 日志 `* with_tcl, Tcl scripting and SDC parsing` |
+| Tcl 支持（**按答疑不实现 Tcl 接口**：赛题原文要求"新增自定义 Tcl 命令"，答疑 9.23 / C41-3 明确"不需要 tcl 接口"，本项目以答疑为准；此项仅记录 `with_tcl` 构建开关已启用） | ✅ PASS（**仅构建依赖**） | CMake 日志 `* with_tcl, Tcl scripting and SDC parsing` |
 | B0 基线（synth_intel → Cyclone IV）跑通 | ✅ PASS | 5 个用例全部产出 `stat.json` |
 | EQY 正误最小例（错误必 FAIL、正确必 PASS） | ✅ PASS | 错误例 rc=2 FAIL；正确例 rc=0 PASS |
 | 5 个基础用例 + 第一版基线报告 | ✅ PASS | `reports/summary.md` |
@@ -46,6 +46,8 @@
   u02 是 8/8（高 4 位与低 4 位分别共用数据源）；u03 是 4/4（`0xA5` 与 `0xFF` 在同 4 个位上都是常量 1）。
 - **资源远低于门槛**：CPU 时间 0.17~0.21 s（门槛 60 s），整进程峰值 28~29 MB（门槛 2 GB）。
 - 本批用例均为组合逻辑，DFF = 0；时序用例要到第 3 周补。
+
+> **内存口径**：赛题阈值为峰值 ≤2GB。答疑早期（C26）称"内存是整个进程的峰值"，**最新 C54-2 明确"峰值工作内存，只看 yosys.exe"**；上表"整进程峰值 28~29 MB"是整进程树峰值（**偏保守**，含 abc 子进程）。
 
 ## 四、验证闭环证据（REQ03 第一份）
 

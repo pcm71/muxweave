@@ -82,7 +82,9 @@ EOF
 yosys -p "read_verilog /tmp/t.v; hierarchy -top t; proc; pmux_analyze -table -json /tmp/t.json"
 test -s /tmp/t.json && echo "JSON OK"
 
-# Tcl 入口自检（题目硬性要求：新增自定义 Tcl 命令）
+# Tcl 入口自检（**说明**：赛题原文要求"在 Yosys 框架内新增自定义 Tcl 命令"，但答疑 9.23 / C41-3 明确
+# "yosys 的每个 pass 都类似 tcl 一样在脚本中可以写成一行单独调用，**不需要 tcl 接口**"。
+# 本项目**以答疑为准、不实现 Tcl 接口**，以下仅为构建期的冒烟检查。）
 printf 'yosys read_verilog /tmp/t.v\nyosys hierarchy -top t\nyosys proc\nyosys pmux_analyze\n' > /tmp/t.tcl
 yosys -c /tmp/t.tcl
 ```

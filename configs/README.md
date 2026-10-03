@@ -22,7 +22,7 @@
 | `O_INSERT_A` | `proc` → `pmux_opt` → `opt_clean` → `synth_intel` | `$pmux` 结构完整，但周边逻辑未清理，别名/常量未归一 |
 | `O_INSERT_B` | `proc` → `opt` → `pmux_opt` → `opt` → `synth_intel` | 控制与数据重复已暴露，但 mux 树可能已被部分化简 |
 
-第 2 周对同一批样本跑 A/B，记录：逻辑单元数、DFF 数、**CPU 时间**、整进程峰值内存、
+第 2 周对同一批样本跑 A/B，记录：逻辑单元数、DFF 数、**CPU 时间**、整进程峰值内存（**内存口径见第 5 节**）、
 EQY 状态，选收益最好的一套固化，并把结果写入 `VERSION_LOCK.md` 的"构建参数"。
 
 **禁止**逐用例临时调参：选定后 `configs/pipelines.json` 就是版本化配置，改动要留记录。
@@ -46,6 +46,10 @@ yosys -p "help synth_intel"
 # 2) 手工跑 B0（把占位符替换掉）
 yosys -s configs/b0_synth_intel_cycloneiv.ys
 
-# 3) 看 CPU 时间与整进程峰值内存（人工与 run_case.py 交叉核对）
+# 3) 看 CPU 时间与整进程峰值内存（人工与 run_case.py 交叉核对；内存口径见第 5 节）
 bash scripts/measure_cmd.sh yosys -s /tmp/b0_resolved.ys
 ```
+
+## 5. 内存口径（2026-10-04 勘误，依据答疑 C54-2）
+
+> 内存口径：赛题阈值为峰值 ≤2GB。答疑早期（C26）称"内存是整个进程的峰值"，**最新 C54-2 明确"峰值工作内存，只看 yosys.exe"**。本项目历史记录多为整进程树峰值（**偏保守**，含 abc 子进程）。

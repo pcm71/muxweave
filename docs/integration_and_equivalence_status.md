@@ -1,5 +1,10 @@
 # 集成进 synth_intel.cc + 等价性现状
 
+> **⚠️ 作废声明（2026-10-04）**：本文档中的面积成绩（如 20.26% / 22.03% / 24.10% / 7.28% 等）
+> 来自"把 `abc9` 换成经典 `abc`"的方案，违反最新答疑 **C53-1**（"请都用 yosys 自带的 abc9 运行"），
+> **已作废**，仅作技术过程记录保留。**现行合规成绩为逐用例平均 5.00%**（纯 abc9）。
+> 口径依据见 `docs/requirements_authoritative.md`。
+
 日期：2026-09-28　分支：`exp/rule-cross-bit-sharing`
 脚本：`scripts/wsl_integrate_pass.sh`、`scripts/wsl_verify_integration.sh`
 数据：`runs/integrated/*`、`formal/abc_equiv/logs/equiv4_*`
@@ -53,7 +58,7 @@ yosys -p "read_verilog test1.v; hierarchy -top test1; synth_intel -family cyclon
 | test4 | 36 | **24** | **33.3%** | 10 → 10 |
 | **逐用例平均** | | | **20.26%** | **全部不变 ✓** |
 
-- 面积已达 **≥20% 满分线**（题目：≥10% 达标、20% 以上该项满分）
+- 面积已达 **≥20% 满分线**（历史数字，见顶部作废声明）。评分细则原文："对比原始综合流程单元数量，实现资源缩减获得基础分 20 分，优化幅度越高得分越高；优化效果达 20% 以上得满分；无优化效果本项 0 分" —— **不存在"不到 10% 不得分"的规则**，10% 只是赛题技术指标
 - **DFF 全部与优化前一致** ✓（题目要求不得多于优化前）
 - 临时 ABC 脚本用后即删（实测无残留）
 

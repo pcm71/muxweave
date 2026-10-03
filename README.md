@@ -6,6 +6,7 @@
 > 口径依据：主办方 2026.09.04 / 09.11 / 09.20 三批答复（见 `../副本FPGA创新大赛问题汇总.xlsx`）。
 > 已确认：统一 `synth_intel`、映射为 **Cyclone IV 系列网表**、pass **编入 Yosys 主程序**（禁止 `plugin` 加载）、
 > 缩减率按**逐用例平均**且主看**逻辑单元**、耗时按 **CPU 时间**、内存按**整个进程峰值**。
+> **内存口径**：赛题阈值为峰值 ≤2GB。答疑早期（C26）称"内存是整个进程的峰值"，**最新 C54-2 明确"峰值工作内存，只看 yosys.exe"**；本项目历史记录多为整进程树峰值（**偏保守**，含 abc 子进程）。
 
 ## 远端仓库
 
@@ -94,8 +95,12 @@ bash scripts/wsl_stage2.sh         # 形式验证 + 5 个基线用例 + 报告�
 | 编译器 | GCC ≥ 13 或 Clang ≥ 16 |
 | Bison | ≥ 3.8 |
 | Python | ≥ 3.11 |
-| 其他 | flex、make/ninja、**tcl-dev（题目要 Tcl 命令，必装）**、libffi-dev、libreadline-dev、zlib1g-dev、pkg-config |
+| 其他 | flex、make/ninja、**tcl-dev**、libffi-dev、libreadline-dev、zlib1g-dev、pkg-config |
 | 可选 | graphviz + xdot（`show` 画图）、iverilog/verilator（排错，不替代 EQY） |
+
+> **关于 Tcl**：赛题原文要求"在 Yosys 框架内新增自定义 Tcl 命令"，但答疑 **9.23 / C41-3** 明确
+> "yosys 的每个 pass 都类似 tcl 一样在脚本中可以写成一行单独调用，**不需要 tcl 接口**"。
+> **本项目以答疑为准：不实现 Tcl 接口**；`tcl-dev` 只是 Yosys 的**构建依赖**（`with_tcl`），不是交付接口。
 
 ---
 
