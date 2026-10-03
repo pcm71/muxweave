@@ -27,3 +27,9 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# EQY 工作目录：eqy 在 CWD 生成 <top>/ 与 <top>_eqy/，属运行产物，禁止入库
+/test[0-9]/
+/test[0-9][0-9]/
+/*_eqy/
+/equivalent_*/
