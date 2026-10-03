@@ -100,8 +100,8 @@ for r in rows:
 print(f"  {'平均':<40} {tb:>5} → {tv:>5}   {mean_red*100:>6.2f}%")
 print()
 if mean_red >= 0.20:   verdict = "✅ ≥20% —— 优化效果项可望满分"
-elif mean_red >= 0.10: verdict = "✅ ≥10% —— 达到题目硬指标"
-else:                  verdict = f"❌ {mean_red*100:.2f}% < 10% —— 未达硬指标"
+elif mean_red >= 0.10: verdict = "✅ ≥10% —— 达到赛题技术指标"
+else:                  verdict = f"⚠️ {mean_red*100:.2f}% < 10% —— 未达技术指标（按细则仍有基础分 20 分）"
 print(f"  >>> {verdict}")
 
 print()

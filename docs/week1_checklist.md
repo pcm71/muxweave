@@ -15,12 +15,12 @@
 - [ ] 把仍未闭环的 3 个问题发到 QQ 群（1107062816）—— 提问稿见 [`docs/open_questions.md`](open_questions.md)，可直接复制 —— **B**
 - [ ] 产出：需求表 + 版本决策 + 责任人 —— 全员
 
-## 第 2～3 天 —— pass 编入主程序 + Tcl 可调用（本周唯一硬关卡）
+## 第 2～3 天 —— pass 编入主程序（本周唯一硬关卡；按答疑 C41-3 不要求 Tcl 接口）
 
 - [ ] `bash scripts/bootstrap_yosys.sh` 编译并安装 Yosys，记录 `yosys -V` 到 `VERSION_LOCK.md` —— **A**
 - [ ] 按 `plugin/INTEGRATION.md` 把 `pmux_analyze.cc`、`pmux_opt.cc` 接进 `passes/` 并重新构建 —— **A**
 - [ ] `yosys -p "help pmux_analyze"` 与 `yosys -p "pmux_analyze"` 均正常 —— **A**
-- [ ] 从 Tcl 脚本调用成功（Yosys 内 `tcl` 或 `-c` 入口）—— **A + C**
+- [ ] ~~从 Tcl 脚本调用成功~~（答疑 C41-3 已明确**不需要 Tcl 接口**，此项取消）
 - [ ] 明确记录：**未使用 `plugin -i` 加载 .so** —— **A**
 - [ ] 若编译失败：立刻降级到另一个版本或调整工具链，**不要拖到第 2 周**
 

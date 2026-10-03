@@ -112,7 +112,7 @@ if rows:
     avg = statistics.fmean(r[3] for r in rows)
     print()
     print(f"  >>> 逐用例平均缩减率：{avg:.2f}%   （官方口径，逻辑单元）")
-    print(f"  >>> 判定：{'✅ ≥20%，面积项可望满分' if avg >= 20 else ('✅ ≥10% 达标' if avg >= 10 else '❌ <10% 未达标')}")
+    print(f"  >>> 判定：{'✅ ≥20%，按评分细则该项满分' if avg >= 20 else ('✅ ≥10%，达到赛题技术指标' if avg >= 10 else '⚠️ <10%，未达技术指标（细则：有缩减即得基础分 20 分，无优化效果才 0 分）')}")
     bad = [r for r in rows if r[4] and r[1] and r[4] > 0]
 PY
 

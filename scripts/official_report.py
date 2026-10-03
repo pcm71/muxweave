@@ -44,12 +44,15 @@ EQUIV_DOC = "docs/equivalence_matrix.md"
 
 
 def measure(binary: str, case: str, top: str, reps: int):
-    """用 measure_run.py 重复测量（每次全新进程，ru_maxrss 只反映该 yosys 子进程）。"""
+    """重复测量。内存用 measure_yosys_self.py（轮询 /proc/<pid>/status 的 VmHWM），
+    即**只看 yosys.exe 进程自身**的峰值 —— 这是答疑 C54-2 要求的口径。
+    （早期用 measure_run.py 的 RUSAGE_CHILDREN.ru_maxrss 得到的是**整进程树**峰值，
+     会把 abc 子进程的峰值算进来，偏保守，已不再作为官方口径。）"""
     stat_path = f"runs/official_report/{top}.json"
     os.makedirs("runs/official_report", exist_ok=True)
     cpus, rsss, walls = [], [], []
     for _ in range(reps):
-        cmd = [sys.executable, "scripts/measure_run.py", "--", binary, "-q", "-p",
+        cmd = [sys.executable, "scripts/measure_yosys_self.py", "1", "--", binary, "-q", "-p",
                f"read_verilog {case}; hierarchy -top {top}; "
                f"synth_intel -family cycloneiv -top {top}; "
                f"tee -o {stat_path} stat -json"]
@@ -60,7 +63,7 @@ def measure(binary: str, case: str, top: str, reps: int):
             continue
         if d.get("rc") != 0:
             continue
-        cpus.append(d["cpu_total"]); rsss.append(d["maxrss_kb"]); walls.append(d["wall"])
+        cpus.append(d["cpu_total"]); rsss.append(d["maxrss_self_kb"]); walls.append(d["wall"])
     if not cpus:
         return None
     try:
@@ -132,7 +135,7 @@ def main() -> int:
     L.append("| 集成方式 | C53 问题2：「把新加的优化pass放到 synth_intel.cc 里编译到 exe 中，脚本相同，yosys.exe 不同」 | ✅ 已写入 `synth_intel.cc` |")
     L.append("| 面积指标 | C53 问题3：「**主要看 lut 逻辑单元**，原则上其他单元不能增加（如 dff, io）」 | ✅ 只统计 LUT 逻辑单元；DFF 不变 |")
     L.append("| CPU 计时 | C54 问题1：「**编译耗时并不作为评分选项**」 | 故本报告效率列仅供参考，不构成扣分 |")
-    L.append("| 内存口径 | C54 问题2：「峰值工作内存，**只看 yosys.exe**」 | 本报告内存列为整进程树峰值（偏保守，含 abc 子进程） |")
+    L.append("| 内存口径 | C54-2：「峰值工作内存，**只看 yosys.exe**」 | ✅ 用 `scripts/measure_yosys_self.py` 轮询 `/proc/<pid>/status` 的 `VmHWM`，**不含 abc 子进程**，即官方口径 |")
     L.append("| 等效性验证 | C54 问题3：映射用 `-family cycloneiv`；eqy 验证 **abc 之后的 `$lut` 单元**（abc 之后输出 ilang） | ✅ 等价性验证在 abc 之后的网表上进行 |")
     L.append("")
     L.append("> **历史说明**：本报告早先用「把 `abc9` 换成经典 `abc`」得到 20.26%，该做法违反 C53 问题1，**已作废**。")
@@ -169,9 +172,9 @@ def main() -> int:
     if mean_red >= 0.20:
         L.append(f"- ✅ **逐用例平均 {mean_red*100:.2f}% ≥ 20%** —— 达到评分表「20% 以上该项满分」")
     elif mean_red >= 0.10:
-        L.append(f"- ✅ 逐用例平均 {mean_red*100:.2f}% ≥ 10% —— 达到题目硬指标")
+        L.append(f"- ✅ 逐用例平均 {mean_red*100:.2f}% ≥ 10% —— 达到赛题技术指标")
     else:
-        L.append(f"- ❌ 逐用例平均 {mean_red*100:.2f}% < 10% —— 未达硬指标")
+        L.append(f"- ⚠️ 逐用例平均 {mean_red*100:.2f}% < 10% —— 未达赛题技术指标（评分细则：有缩减即得基础分 20 分，无优化效果才 0 分）")
     L.append(f"- DFF 约束：{'✅ 全部用例均未增加' if not dff_bad else '❌ 增加于 ' + ', '.join(dff_bad)}")
     L.append("")
     L.append("### 效率判定（官方口径：每个用例都要 ≤5%）")

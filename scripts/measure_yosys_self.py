@@ -39,20 +39,32 @@ def measure(cmd: list[str]) -> dict:
     pid = p.pid
     peak = 0
     samples = 0
-    # VmHWM 单调递增，密集采样取最大值即可逼近最终值
+    status = 0
+    ru = None
+    # 用 os.wait4(WNOHANG) 兼顾"轮询内存"与"拿到 rusage"：
+    #   * VmHWM 单调递增，密集采样取最大值即可逼近最终值
+    #   * wait4 返回的 rusage 给出该子进程自身消耗的 CPU 时间
     while True:
-        rc = p.poll()
+        try:
+            wpid, status, ru = os.wait4(pid, os.WNOHANG)
+        except ChildProcessError:
+            break
         v = read_vmhwm(pid)
         if v:
             peak = max(peak, v)
             samples += 1
-        if rc is not None:
+        if wpid != 0:
             break
         time.sleep(0.003)
-    pid_, status, ru = os.wait4(p.pid, 0) if False else (0, 0, None)
     wall = time.time() - t0
-    cpu = (ru.ru_utime + ru.ru_stime) if ru else float("nan")
-    return dict(rc=p.returncode, maxrss_self_kb=peak, samples=samples,
+    rc = os.waitstatus_to_exitcode(status) if ru is not None else -1
+    cpu = (ru.ru_utime + ru.ru_stime) if ru is not None else float("nan")
+    # 让 Popen 对象状态一致（进程已被 wait4 回收）
+    try:
+        p.returncode = rc
+    except Exception:
+        pass
+    return dict(rc=rc, maxrss_self_kb=peak, samples=samples,
                 wall=wall, cpu_total=cpu)
 
 
