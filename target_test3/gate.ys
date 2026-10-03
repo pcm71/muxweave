@@ -1,0 +1,6 @@
+read_verilog runs/netlist_official/test3_target.v
+prep -top test3
+opt_clean
+check -initdrv
+setundef -undriven -undef
+write_rtlil target_test3/gate.il

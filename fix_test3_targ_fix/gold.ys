@@ -1,0 +1,7 @@
+read_verilog benchmarks/official/test3.v
+prep -top test3
+setundef -zero -init
+opt_clean
+check -initdrv
+setundef -undriven -undef
+write_rtlil fix_test3_targ_fix/gold.il

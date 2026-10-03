@@ -1,0 +1,36 @@
+EQY 23:18:25 [fix_test3_ctrl_fix] read_gold: starting process "yosys -ql fix_test3_ctrl_fix/gold.log fix_test3_ctrl_fix/gold.ys"
+EQY 23:18:25 [fix_test3_ctrl_fix] read_gold: finished (returncode=0)
+EQY 23:18:25 [fix_test3_ctrl_fix] read_gate: starting process "yosys -ql fix_test3_ctrl_fix/gate.log fix_test3_ctrl_fix/gate.ys"
+EQY 23:18:25 [fix_test3_ctrl_fix] read_gate: finished (returncode=0)
+EQY 23:18:25 [fix_test3_ctrl_fix] combine: starting process "yosys -ql fix_test3_ctrl_fix/combine.log fix_test3_ctrl_fix/combine.ys"
+EQY 23:18:25 [fix_test3_ctrl_fix] combine: finished (returncode=0)
+EQY 23:18:25 [fix_test3_ctrl_fix] partition: starting process "cd fix_test3_ctrl_fix; yosys -ql partition.log partition.ys"
+EQY 23:18:26 [fix_test3_ctrl_fix] partition: finished (returncode=0)
+EQY 23:18:26 [fix_test3_ctrl_fix] Warning: Partition test3.sr_out contains 1 unused gold inputs.
+EQY 23:18:26 [fix_test3_ctrl_fix] Warning: Partition test3.sr_out contains 1 unused gate inputs.
+EQY 23:18:26 [fix_test3_ctrl_fix] Warning: Partition test3.rw contains 3 unused gold inputs.
+EQY 23:18:26 [fix_test3_ctrl_fix] Warning: Partition test3.gpioout contains 1 unused gold inputs.
+EQY 23:18:26 [fix_test3_ctrl_fix] Warning: Partition test3.gpioout contains 1 unused gate inputs.
+EQY 23:18:26 [fix_test3_ctrl_fix] run: starting process "make -C fix_test3_ctrl_fix -f strategies.mk"
+EQY 23:18:26 [fix_test3_ctrl_fix] run: make: Entering directory '/mnt/c/Users/LEGION/Desktop/PMUX/muxweave/fix_test3_ctrl_fix'
+EQY 23:18:26 [fix_test3_ctrl_fix] run: Running strategy 'simple' on 'test3.gpioout'..
+EQY 23:18:26 [fix_test3_ctrl_fix] run: Could not prove equivalence of partition 'test3.gpioout' using strategy 'simple': partitions not equivalent
+EQY 23:18:26 [fix_test3_ctrl_fix] run: Running strategy 'simple' on 'test3.rw'..
+EQY 23:18:26 [fix_test3_ctrl_fix] run: Could not prove equivalence of partition 'test3.rw' using strategy 'simple': partitions not equivalent
+EQY 23:18:26 [fix_test3_ctrl_fix] run: Running strategy 'simple' on 'test3.sr'..
+EQY 23:18:27 [fix_test3_ctrl_fix] run: Could not prove equivalence of partition 'test3.sr' using strategy 'simple': partitions not equivalent
+EQY 23:18:27 [fix_test3_ctrl_fix] run: Running strategy 'simple' on 'test3.sr_out'..
+EQY 23:18:27 [fix_test3_ctrl_fix] run: Could not prove equivalence of partition 'test3.sr_out' using strategy 'simple': partitions not equivalent
+EQY 23:18:27 [fix_test3_ctrl_fix] run: make -f strategies.mk summary
+EQY 23:18:27 [fix_test3_ctrl_fix] run: make[1]: Entering directory '/mnt/c/Users/LEGION/Desktop/PMUX/muxweave/fix_test3_ctrl_fix'
+EQY 23:18:27 [fix_test3_ctrl_fix] run: make[1]: Leaving directory '/mnt/c/Users/LEGION/Desktop/PMUX/muxweave/fix_test3_ctrl_fix'
+EQY 23:18:27 [fix_test3_ctrl_fix] run: make: Leaving directory '/mnt/c/Users/LEGION/Desktop/PMUX/muxweave/fix_test3_ctrl_fix'
+EQY 23:18:27 [fix_test3_ctrl_fix] run: finished (returncode=0)
+EQY 23:18:27 [fix_test3_ctrl_fix] Warning: Failed to prove equivalence for 4/4 partitions:
+EQY 23:18:27 [fix_test3_ctrl_fix] Failed to prove equivalence of partition test3.sr_out
+EQY 23:18:27 [fix_test3_ctrl_fix] Failed to prove equivalence of partition test3.sr
+EQY 23:18:27 [fix_test3_ctrl_fix] Failed to prove equivalence of partition test3.rw
+EQY 23:18:27 [fix_test3_ctrl_fix] Failed to prove equivalence of partition test3.gpioout
+EQY 23:18:27 [fix_test3_ctrl_fix] summary: Elapsed clock time [H:MM:SS (secs)]: 0:00:02 (2)
+EQY 23:18:27 [fix_test3_ctrl_fix] summary: Elapsed process time [H:MM:SS (secs)]: 0:00:00 (0)
+EQY 23:18:27 [fix_test3_ctrl_fix] DONE (FAIL, rc=2)

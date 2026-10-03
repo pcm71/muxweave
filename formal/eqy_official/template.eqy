@@ -1,0 +1,13 @@
+[options]
+
+[gold]
+read -sv benchmarks/official/test4.v
+prep -top test4
+
+[gate]
+read -sv runs/netlist_official/test4_target.v
+prep -top test4
+
+[strategy simple]
+use sat
+depth 10

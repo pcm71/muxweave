@@ -1,0 +1,15 @@
+# 自动生成：gold = 原始 RTL；gate = 综合网表
+[options]
+splitnets off
+
+[gold]
+read_verilog benchmarks/official/test1.v
+prep -top test1
+
+[gate]
+read_verilog runs/netlist_official/test1_ctrl_abc9.v
+prep -top test1
+
+[strategy simple]
+use sat
+depth 5

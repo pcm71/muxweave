@@ -1,0 +1,16 @@
+[options]
+splitnets off
+
+[gold]
+read_verilog benchmarks/official/test4.v
+prep -top test4
+setundef -zero -init
+
+[gate]
+read_verilog runs/netlist_official/test4_ctrl_abc9.v
+prep -top test4
+setundef -zero -init
+
+[strategy simple]
+use sat
+depth 5

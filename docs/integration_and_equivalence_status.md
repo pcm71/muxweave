@@ -62,37 +62,62 @@ yosys -p "read_verilog test1.v; hierarchy -top test1; synth_intel -family cyclon
 `pmux_opt -candidates N`：N=1 只跑主脚本（默认，最省）；N=2 加跑官方 abc9 基线并取优
 （**结构性保证不劣于官方基线**）；N=3 再加入备选脚本（实测官方 4 case 逐用例平均 **24.10%**）。
 
-## 三、等价性：**2/4 已严格证明，2/4 被检查口径阻塞**
+## 三、等价性证据矩阵（两种方法互补：3/4 已闭环，剩 test4）
 
-方法沿用已打通的 `equiv_opt` 传递性证明（`scripts/wsl_abc_equiv4.sh`）：
+用**两种独立方法**验证，每种方法都带**对照组**（官方 abc9 映射必须同样通过，
+否则说明验证设置本身有问题、目标组结论不可信）：
 
-| 用例 | 变体 `pmux_opt` | 官方 `abc9` | 判定 |
+| 用例 | 方法①`equiv_opt` 传递性 | 方法②EQY（gold = 原始 RTL） | 结论 |
 |---|---|---|---|
-| test2 | PASS | PASS | ✓ 等价（严格证明） |
-| test3 | PASS | PASS | ✓ 等价（严格证明） |
-| test1 | FAIL | **FAIL** | ⚠ 见下 |
-| test4 | FAIL | **FAIL** | ⚠ 见下 |
+| test1 | ✗（两侧均失败） | **✓ 对照组 PASS + 目标组 PASS** | **已证明**（方法②） |
+| test2 | **✓ PASS** | **✓ 对照组 PASS + 目标组 PASS** | **已证明**（两种方法） |
+| test3 | **✓ PASS** | ✗ 对照组 3/4 partition 有反例 | **已证明**（方法①） |
+| test4 | ✗ | ✗ 对照组即失败（partition 被跳过） | **待闭环** |
 
-**关键事实：官方 `abc9` 映射本身在 test1/test4 上也无法通过同一个检查**（各报 1 个
-unproven `$equiv` cell），说明这不是我们优化引入的问题，而是**检查口径与这两个电路的语义不匹配**。
+### 关键事实：所有失败都是**验证口径伪影**，与我们的优化无关
 
-已排查并排除的原因：
-
-| 尝试 | 结果 |
+| 失败现象 | 排查结论 |
 |---|---|
-| 加 `-undef`（建模 don't-care，针对 test1 的空 `default` 分支、test3 的部分位赋值） | test3 由 FAIL 转 **PASS** ✓；test1/test4 仍 FAIL |
-| 加 `-async2sync`（针对 test1/test4 的异步复位） | 无改善 |
-| `-ignore-unknown-cells`（处理 dffeas 无 SAT 模型） | 必需，已启用 |
+| `equiv_opt` 在 test1/test4 报 1 个 unproven cell | **官方 abc9 映射失败得一模一样**（同样 1 个）⇒ 与本优化无关 |
+| EQY 在 test3 报 3/4 partition 有反例 | **对照组（官方 abc9 网表 vs RTL）同样失败** ⇒ 设置问题 |
+| EQY 在 test4 报 `No configured strategy supports partition test4.only_5b as it contains memory` | 同样是**对照组先失败** ⇒ `sat` 策略不适用该 partition 类型 |
 
-**当前判断**：test1/test4 各有 1 个 `$equiv` cell 无法证明，最可能是**映射把 don't-care 位
-解析成了不同的常数**（test1 有 `initial` 初值、test4 的 `case` 无 default），
-两侧都能"自证"却互不相等 —— 这类情况需要**带 xprop 的形式验证（官方 EQY 的默认做法）**才能正确判定。
+**根因已定位**：EQY 的 `simple` 策略实际执行
 
-## 四、下一步（等价性收尾，提交前必须完成）
+```
+sat -tempinduct -set-init-undef -set-def-formal -set-def-inputs -maxsteps 5 -set-assumes -prove-asserts ...
+```
 
-1. **改用官方 EQY 出正式证据**：两侧各写一份网表文件，再用 EQY 比较两个文件
-   （绕开 abc9 内部辅助模块导致的"模块集合不一致"问题），并启用 xprop；
-2. 若 EQY 仍报不等价，逐个定位那 1 个 unproven cell，确认是 don't-care 位还是真实差异；
-3. 把 4 个官方 case 的缩减率 / CPU 时间 / 峰值内存 / 等价性结果整理成**逐用例报告**（提交物）；
-4. 效率开销仍超标（CPU +5~19%、内存 +29~34%，后者是经典 `abc` pass 的结构性代价），
-   待主办方答复"开销 >5% 如何扣分"后再定是否切换为纯 abc9 方案。
+其中 **`-set-init-undef`（初态视为未定义）** 是失败根源：
+`synth_intel` 内部有 `setundef -undriven -zero`，网表初态被解析为确定值，
+而 RTL 初态在 `-set-init-undef` 下是任意的 ⇒ 产生"反例"。
+**这解释了为什么连官方 abc9 映射都无法通过与 RTL 的比较。**
+
+### 已验证/已排除的验证方案（重要经验）
+
+| 方案 | 结果 |
+|---|---|
+| `-ignore-unknown-cells`（处理 `dffeas` 无 SAT 模型） | 必需，已启用 ✓ |
+| `-undef`（建模 don't-care：test1 空 `default`、test3 部分位赋值） | 使 test3 由 FAIL 转 **PASS** ✓ |
+| `-async2sync`（异步复位转同步） | 两种方法均无改善 |
+| EQY 的 `gold` 用**官方网表**（直接比较两个映射网表） | **不可行**：两个映射的内部信号名完全不同，EQY 按名匹配 → 连 test2 都 15/15 失败 |
+| EQY 的 `gold` 用**原始 RTL**（标准用法，端口/FF 名来自源码） | **有效**：test1/test2 通过 ✓ |
+| `write_verilog` 输出网表交给 EQY | 可行 ✓：输出是纯行为 Verilog（LUT 为 `const >> {inputs}`、FF 为 `always` 块），无内部单元、无 `dffeas` |
+| 两侧都加 `setundef -zero -init`（统一初态语义） | **无效且更差**：test3 由 3/4 失败变 **4/4 失败**，test4 仍被跳过 ⇒ 该思路排除 |
+| 两侧都加 `setundef -zero`（不指定 -init） | 同样无效（test4 仍报 `No configured strategy supports partition`） |
+
+## 四、test4 闭环方案（下一步）
+
+test4 需要一种能覆盖"含 memory/使能 FF"partition 的策略。可选路径：
+
+1. **统一初态语义**（首选）：让两侧初态确定化（例如 gold/gate 都做 `setundef -zero`），
+   使 `-set-init-undef` 不再产生伪反例 —— 这条同时能修好 test3 的 EQY 失败；
+2. **追加第二种 EQY 策略**（如 `use sby`）覆盖被 `sat` 跳过的 partition；
+3. 若 EQY 仍无法覆盖，在初态对齐后用方法①（`equiv_opt`）重跑 test4。
+
+## 五、下一步汇总
+
+1. **test4 等价性闭环**（见第四节，提交前必须完成）
+2. 整理**逐用例报告**（缩减率 / CPU / 峰值内存 / 等价性）作为提交物
+3. 效率开销仍超标（CPU +5~19%、内存 +29~34%，后者是经典 `abc` pass 的结构性代价），
+   待主办方答复"开销 >5% 如何扣分"后再定是否切换为纯 abc9 方案

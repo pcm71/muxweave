@@ -1,0 +1,16 @@
+# 自动生成：官方 4 个 case 的等价性验证
+# gold = 官方 abc9 映射；gate = 自研 pmux_opt（两者在同一输入网表上映射）
+[options]
+splitnets off
+
+[gold]
+read_verilog runs/netlist_official/test1_gold.v
+prep -top test1
+
+[gate]
+read_verilog runs/netlist_official/test1_gate.v
+prep -top test1
+
+[strategy simple]
+use sat
+depth 5
