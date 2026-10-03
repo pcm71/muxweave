@@ -1,0 +1,7 @@
+&scorr
+&sweep
+&dc2
+&dch -f -r
+&ps
+&fraig -x
+&if -W 300 -a -v

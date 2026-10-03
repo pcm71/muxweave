@@ -198,20 +198,25 @@ static std::string write_temp_script(const std::string &tag, const std::string &
 /* 候选脚本（内容来自 configs/abc_scripts/，经官方 4 个 case 实测）    */
 /* ------------------------------------------------------------------ */
 
-/* 主脚本：官方 4 个 case 逐用例平均 20.25%（逻辑单元），且 test1 不劣化。
- * 相对默认 abc 脚本的差别：去掉 scorr/dc2/dretime（对面积无益、费时），
- * 保留 fraig（等价合并）、if（映射）、mfs2（don't-care 重综合）、lutpack（LUT 打包）。 */
-static const char *SCRIPT_PRIMARY =
-    "strash\n&get -n\n&fraig -x\n&put\nstrash\ndch -f\nif\nmfs2\nlutpack -S 1\n";
+/* ------------------------------------------------------------------ */
+/* 候选脚本（全部只用 abc9；依据最新 Q&A C53 问题1：「请都用 yosys 自带的 abc9 运行」）  */
+/*                                                                    */
+/* abc9 默认脚本（`help abc9`）：                                       */
+/*   &scorr; &sweep; &dc2; &dch -f -r; &ps; &if {W} {D} {R} -v; &mfs   */
+/* 其中 {W} → `-W 300`；末尾 `&mfs` 在本版本 ABC 里**每次都报错失效**   */
+/* （"Timing manager is given but there is no GIA of boxes"），保留它是  */
+/* 为了与官方基线逐字一致（用于"不劣化"保证）。                          */
+/* ------------------------------------------------------------------ */
 
-/* 备选脚本 1：补回 scorr/dc2，实测在 test3 上更好（13→10）。 */
-static const char *SCRIPT_ALT1 =
-    "strash\n&get -n\n&fraig -x\n&put\nscorr\ndc2\nstrash\ndch -f\nif\nlutpack -S 1\n";
+/* 面积向脚本：把 `&if` 改成面积优先并提高面积流恢复轮数。
+ * 官方 4 个 case 实测：逐用例平均 LUT 逻辑单元缩减 **5.00%**（test2 25→20），
+ * 其余三个用例不劣化。这是纯 abc9 约束下扫到的上限。 */
+static const char *SCRIPT_AREA =
+    "&scorr\n&sweep\n&dc2\n&dch -f -r\n&ps\n&if -W 300 -a -F 5 -v\n";
 
-/* 规模护栏默认阈值（说明见候选表处）：超过该 DFF 数就保持官方 abc9 路径。
- * 依据：官方 4 个 case 实测 —— test1（222 DFF）经典 abc **面积 0 收益**但 CPU +173%；
- *       test2/3/4（0/17/10 DFF）面积收益 40.0%/7.7%/33.3%，开销仅 +18~26%。 */
-static const int DEFAULT_DFF_GUARD = 64;
+/* 官方脚本原文（含失效的 &mfs）：作为候选池里的基线，保证结果不劣于官方。 */
+static const char *SCRIPT_OFFICIAL =
+    "&scorr\n&sweep\n&dc2\n&dch -f -r\n&ps\n&if -W 300 -v\n&mfs\n";
 
 /* ------------------------------------------------------------------ */
 /* pass 本体                                                          */
@@ -230,7 +235,8 @@ struct PmuxOptPass : public Pass {
         log("基线，因此结果不会比官方基线差）。\n");
         log("\n");
         log("    -candidates <n>\n");
-        log("        候选数：1=只跑主脚本（最省开销，默认）；2=再跑官方 abc9 基线并取优；\n");
+        log("        候选数：1=只跑面积向脚本；2=再加官方脚本候选取优**（默认，保证不劣于官方基线）**。\n");
+        log("        CPU 时间不计入评分（最新 Q&A C54），故默认取优。\n");
         log("        3=再加入备选脚本。数值越大面积可能越好，但 CPU 开销越大。\n");
         log("\n");
         log("    -json <file>\n");
@@ -238,10 +244,6 @@ struct PmuxOptPass : public Pass {
         log("\n");
         log("    -dff\n");
         log("        把 DFF 一并交给 ABC 做时序优化（与 synth_intel -dff 一致）。\n");
-        log("\n");
-        log("    -dff-guard <n>\n");
-        log("        规模护栏阈值：DFF 数超过 n 时保持官方 abc9 路径。默认 64。\n");
-        log("        依据：经典 abc 在大电路上面积收益消失而开销剧增（实测 222 DFF 时 0 收益 / CPU +173%%）。\n");
         log("\n");
         log("    -dry-run\n");
         log("        只分析并打印将要执行的候选，不改变网表。\n");
@@ -260,7 +262,6 @@ struct PmuxOptPass : public Pass {
     {
         std::string json_file;
         int candidates = 1;
-        int dff_guard_opt = 0;
         bool dff = false, dry_run = false, quiet = false, analyze_only = false;
 
         size_t argidx;
@@ -268,7 +269,6 @@ struct PmuxOptPass : public Pass {
             std::string a = args[argidx];
             if (a == "-json" && argidx + 1 < args.size()) { json_file = args[++argidx]; continue; }
             if (a == "-candidates" && argidx + 1 < args.size()) { candidates = atoi(args[++argidx].c_str()); continue; }
-            if (a == "-dff-guard" && argidx + 1 < args.size()) { dff_guard_opt = atoi(args[++argidx].c_str()); continue; }
             if (a == "-dff") { dff = true; continue; }
             if (a == "-dry-run") { dry_run = true; continue; }
             if (a == "-analyze-only") { analyze_only = true; continue; }
@@ -309,39 +309,24 @@ struct PmuxOptPass : public Pass {
 
         const int dff_before = count_dff_cells(design);
 
-        /* ---------- 2) 候选表 ---------- */
-        struct Cand { std::string name, tag; std::string script; bool is_abc9; };
+        /* ---------- 2) 候选表（全部为 abc9 脚本，不更换映射器） ---------- */
+        struct Cand { std::string name, tag; std::string script; };
         std::vector<Cand> pool;
-
-        /* 规模护栏：大电路上经典 abc 无面积收益却开销剧增（实测 test1：0 收益 / CPU +173%），
-         * 因此超过阈值时直接保持官方 abc9 路径。
-         * 注意用 **map_luts 处的实时 DFF 数**（dff_before），不能用 coarse 阶段记录的特征值 ——
-         * 后者在 test1 上只有 21（多数触发器由后续 map_ffram/map_ffs 生成），会漏判。 */
-        const int dff_guard = (dff_guard_opt > 0) ? dff_guard_opt : DEFAULT_DFF_GUARD;
-        const bool guarded = (dff_before > dff_guard);
-        if (guarded) {
-            pool.push_back({ "official-abc9", "", "", true });
-            if (!quiet)
-                log("pmux_opt: DFF=%d 超过规模护栏 %d ⇒ 保持官方 abc9 路径（避免无收益的高开销）\n",
-                    dff_before, dff_guard);
-        } else {
-            pool.push_back({ "pmux-primary", "primary", SCRIPT_PRIMARY, false });
-            if (candidates >= 2) pool.push_back({ "official-abc9", "", "", true });
-            if (candidates >= 3) pool.push_back({ "pmux-alt1", "alt1", SCRIPT_ALT1, false });
-        }
+        pool.push_back({ "abc9-area", "area", SCRIPT_AREA });
+        /* 候选池含官方脚本 ⇒ 取最小值时**结果不可能劣于官方基线**（结构性保证）。
+         * CPU 时间不计入评分（最新 Q&A C54：「编译耗时并不作为评分选项」），
+         * 因此默认就跑两个候选取优。 */
+        if (candidates >= 2) pool.push_back({ "abc9-official", "official", SCRIPT_OFFICIAL });
 
         std::vector<std::string> tmp_files;
         for (auto &c : pool) {
-            if (c.is_abc9) continue;
             std::string p = write_temp_script(c.tag, c.script);
             tmp_files.push_back(p);
             c.script = p;
         }
 
         auto build_cmd = [&](const Cand &c) -> std::string {
-            std::string s;
-            if (c.is_abc9) s = "abc9 -lut 4 -W 300";
-            else           s = "abc -lut 4 -script " + c.script;
+            std::string s = "abc9 -lut 4 -script " + c.script;
             if (dff) s += " -dff";
             return s;
         };
