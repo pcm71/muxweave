@@ -144,3 +144,53 @@ test3 是移位寄存器，`case(sr)` 的分支需要先移入 8 位才可达 �
 
 test1（222 个触发器）最慢：**6 个变体 × 2 模式约 20 分钟**；test2/3/4 各在 1 分钟内完成。
 所有单模式均设 900 s 超时，超时判为 `TIMEOUT`（不算 PASS 也不算反例）。
+
+---
+
+## 七、补做官方口径的 EQY 验证（答疑 C54-3）
+
+### 依据
+
+> **C54-3**：「映射用 `synth_intel -family cycloneiv`，eqy 验证 **abc 之后的 `$lut` 单元**，
+> 因完全映射之后的 cycloneiv 单元 eqy 不能识别功能，因此在 **abc 之后输出 ilang** 进行 eqy 验证。」
+
+此前项目用的是自研 miter+sat 方法（已被 **C53-5**「切换设计模式验证是允许的，算作通过」认可）。
+本节补做官方口径的 ilang + EQY 验证，**两套证据互为交叉印证**。
+
+脚本：`scripts/eqy_on_ilang.sh`　日志：`runs/eqy_ilang/*_eqy/run.log`
+
+### 结果
+
+| 用例 | EQY（官方口径：abc 之后的 ilang） | 自研 miter+sat（设计模式，C53-5 认可） |
+|---|---|---|
+| test1 | **✓ PASS** | ✓ PASS |
+| test2 | **✓ PASS** | ✓ PASS |
+| test3 | ✗ 3/4 分区失败（`sr`/`rw`/`gpioout`） | ✓ PASS |
+| test4 | ✗ 分区含 memory，无可用策略 | ✓ PASS |
+
+test3/test4 的 EQY 失败是**工具限制**，且**同样的失败也发生在官方基线上**（对照组），
+不是优化引入的问题；已由 C53-5 允许的设计模式验证覆盖。
+
+### 实现要点（四个技术障碍与解法）
+
+| # | 障碍 | 解法 |
+|---|---|---|
+| 1 | 网表里有 Intel 原语 `\dffeas`，EQY 无法建模 | **在 `map_ffs` 之前跑 abc**：此时组合逻辑是 `$lut`、触发器仍是通用类型（`$adff`/`$dff`），正是 C54-3 所指的"abc 之后的 `$lut` 单元" |
+| 2 | `dffeas` 行为模型（`+/intel/cycloneiv/cells_sim.v`）含多重边沿触发，Yosys 前端报 `Multiple edge sensitive events found` | 同上绕开 —— 无需引入任何单元模型；单独抽取 `dffeas` 单模块也无效 |
+| 3 | `hierarchy -top` 之后 techmap 仍留下 12 个库模块（`dffeas`/`cycloneiv_*`），EQY 报 `Unmatched module exists in gate that does not exist in gold` | 导出 ilang 后**只保留顶层模块** |
+| 4 | 裁剪模块时，模块前的 `attribute` 行被留在文件头，Yosys 报 `dangling attribute` | 切分时把 attribute 行**归属到紧随其后的模块** |
+
+### 与早期 EQY 尝试的区别（避免混淆）
+
+早期（本会话之前）的 EQY 尝试是在 **RTL 为 gold、`map_ffs` 之后的网表为 gate** 下做的，
+因此 `dffeas` 无法建模、test4 又卡在 memory 分区上。本次改为：
+* **在 `map_ffs` 之前跑 abc** ⇒ 网表无 Intel 原语，EQY 可读；
+* 并裁掉库模块 ⇒ 消除 `Unmatched module`。
+
+### 结论
+
+> **等价性证据（两套独立方法）**
+> * 官方口径 **EQY**（abc 之后的 ilang）：**test1 / test2 通过**；
+> * 设计模式 **miter + sat**（C53-5 明确算通过）：**4/4 全部通过**，每个用例都先过自检与负对照。
+>
+> 因此「所有测试用例优化前后网表通过形式等价检查」这条硬性要求**已闭环**。
