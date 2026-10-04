@@ -1,0 +1,4 @@
+&dch -p -f -r
+&mfs
+&if -a -v
+&mfs
