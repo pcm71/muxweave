@@ -33,3 +33,7 @@ __pycache__/
 /test[0-9][0-9]/
 /*_eqy/
 /equivalent_*/
+
+# 提交物打包产物（体积大，不入库）
+/dist/
+*.tar.gz
