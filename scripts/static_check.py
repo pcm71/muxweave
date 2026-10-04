@@ -30,7 +30,12 @@ def count_word(text: str, word: str) -> int:
 
 
 print("== Verilog 结构配对 ==")
+# 跳过构建产物目录：dist/ 是"按 C55 打包的提交物"，里面含整套 Yosys share/ 库文件
+# （数千个第三方 .v），既不是本项目源码，也不该用本项目的规则去校验。
+SKIP_DIRS = {"dist", ".git", "runs", "_tmp"}
 for vf in sorted(ROOT.glob("**/*.v")):
+    if any(part in SKIP_DIRS for part in vf.relative_to(ROOT).parts):
+        continue
     src = strip_comments(vf.read_text(encoding="utf-8", errors="replace"))
     problems = []
     for a, b in PAIRS:
