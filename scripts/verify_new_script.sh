@@ -16,7 +16,7 @@ cd "$P" || exit 1
 D=runs/verify_new
 L=formal/verify_new
 mkdir -p "$D" "$L"
-NEW=configs/abc_scripts/tune/c0_base.abc
+NEW=configs/abc_scripts/nkl/n_win.abc   # 必须与 pass 内 SCRIPT_AREA 逐字一致：&dch -p -f -r / &if -a -v
 
 gen() { # $1=verilog $2=top $3=abc9参数 $4=输出
   # 在 map_ffs **之前**跑 abc9：此时触发器仍是通用类型（$adff/$dff），
@@ -26,7 +26,7 @@ gen() { # $1=verilog $2=top $3=abc9参数 $4=输出
 read_verilog $1
 hierarchy -top $2
 synth_intel -family cycloneiv -top $2 -run begin:map_ffs
-abc9 -lut 4 $3
+abc9 $3
 clean
 opt -fast
 write_verilog -noattr $4
@@ -94,19 +94,24 @@ open(dst, "w", encoding="utf-8").write(t)
 PY
 }
 
-echo "新脚本：$(tr '\n' ' ' < $NEW)"
+echo "面积向脚本：$(tr '\n' ' ' < $NEW)"
+echo "候选（与 pass 内一致）：-lut 4  /  -luts 4,4,4,1"
 echo
 for case in test1 test2 test3 test4; do
   depth=5; [ "$case" = "test3" ] && depth=12
-  gen benchmarks/official/$case.v $case "-W 300" "$D/${case}_gold.v"
-  gen benchmarks/official/$case.v $case "-script $NEW" "$D/${case}_new.v"
+  gen benchmarks/official/$case.v $case "-lut 4 -W 300" "$D/${case}_gold.v"
   mutate benchmarks/official/$case.v "$D/${case}_mut.v" > /dev/null
-  gen "$D/${case}_mut.v" $case "-W 300" "$D/${case}_neg.v"
+  gen "$D/${case}_mut.v" $case "-lut 4 -W 300" "$D/${case}_neg.v"
 
   r1=$(eqcheck "$D/${case}_gold.v" "$D/${case}_gold.v" "$case" "${case}_self" $depth)
   r2=$(eqcheck "$D/${case}_gold.v" "$D/${case}_neg.v" "$case" "${case}_negctl" $depth)
-  r3=$(eqcheck "$D/${case}_gold.v" "$D/${case}_new.v" "$case" "${case}_new" $depth)
-  printf '  %-7s ①自检=%-7s ②负对照=%-7s ③新脚本 vs 官方=%s\n' "$case" "$r1" "$r2" "$r3"
+  for cand in "lut4:-lut 4" "luts4441:-luts 4,4,4,1"; do
+    ctag="${cand%%:*}"; copts="${cand##*:}"
+    gen benchmarks/official/$case.v $case "$copts -script $NEW" "$D/${case}_new_$ctag.v"
+    r3=$(eqcheck "$D/${case}_gold.v" "$D/${case}_new_$ctag.v" "$case" "${case}_new_$ctag" $depth)
+    printf '  %-7s 候选=%-10s ①自检=%-6s ②负对照=%-6s ③与本候选 vs 官方=%s\n' \
+      "$case" "$ctag" "$r1" "$r2" "$r3"
+  done
 done
 echo
 echo "判定：只有 ①=PASS 且 ②=FAIL 时，③ 的结论才有效"

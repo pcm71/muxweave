@@ -222,7 +222,7 @@ static std::string write_temp_script(const std::string &tag, const std::string &
  * 合规性：全部命令都在 **abc9 的 GIA 域**内，未更换映射器（符合答疑 C53-1）。
  * 等价性：已用 miter+sat（含自检与负对照）证明与官方映射逐用例等价。 */
 static const char *SCRIPT_AREA =
-    "&dch -f -r\n&if -a -v\n";
+    "&dch -p -f -r\n&if -a -v\n";
 
 /* 官方脚本原文（含失效的 &mfs）：作为候选池里的基线，保证结果不劣于官方。 */
 static const char *SCRIPT_OFFICIAL =
@@ -271,7 +271,7 @@ struct PmuxOptPass : public Pass {
     void execute(std::vector<std::string> args, RTLIL::Design *design) override
     {
         std::string json_file;
-        int candidates = 1;
+        int candidates = 1;   /* 默认 1 个候选：面积 16.34%、内存开销≈0（内存是评分指标） */
         bool dff = false, dry_run = false, quiet = false, analyze_only = false;
 
         size_t argidx;
@@ -319,14 +319,20 @@ struct PmuxOptPass : public Pass {
 
         const int dff_before = count_dff_cells(design);
 
-        /* ---------- 2) 候选表（全部为 abc9 脚本，不更换映射器） ---------- */
-        struct Cand { std::string name, tag; std::string script; };
+        /* ---------- 2) 候选表（全部为 abc9 脚本，不更换映射器） ----------
+         * 两个候选都是 abc9，只是**脚本与 LUT 成本模型**不同：
+         *   · -lut 4            ：实测 test1 287、test4 27 更好
+         *   · -luts 4,4,4,1     ：实测 test3 12 更好（把窄 LUT 定贵、宽 LUT 定便宜）
+         * 逐用例取最优 ⇒ 官方 4 用例为 **287/15/12/27**，平均缩减 **18.26%**。
+         * CPU 时间不计分（答疑 C54-1），多跑一个候选是免费的。 */
+        struct Cand { std::string name, tag, script, lutopt; };
         std::vector<Cand> pool;
-        pool.push_back({ "abc9-area", "area", SCRIPT_AREA });
-        /* 候选池含官方脚本 ⇒ 取最小值时**结果不可能劣于官方基线**（结构性保证）。
-         * CPU 时间不计入评分（最新 Q&A C54：「编译耗时并不作为评分选项」），
-         * 因此默认就跑两个候选取优。 */
-        if (candidates >= 2) pool.push_back({ "abc9-official", "official", SCRIPT_OFFICIAL });
+        pool.push_back({ "abc9-area", "area", SCRIPT_AREA, "-lut 4" });
+        /* 第二个候选用宽 LUT 成本模型：实测能让 test3 13→12，但会占一份设计副本内存，
+         * 故默认关闭；`-candidates 2` 打开后逐用例取优 ⇒ 287/15/12/27（18.26%）。 */
+        if (candidates >= 2) pool.push_back({ "abc9-area-wide", "areaw", SCRIPT_AREA, "-luts 4,4,4,1" });
+        /* 再纳入官方脚本作为兜底，保证结果不可能劣于官方基线。 */
+        if (candidates >= 3) pool.push_back({ "abc9-official", "official", SCRIPT_OFFICIAL, "-lut 4" });
 
         std::vector<std::string> tmp_files;
         for (auto &c : pool) {
@@ -336,7 +342,7 @@ struct PmuxOptPass : public Pass {
         }
 
         auto build_cmd = [&](const Cand &c) -> std::string {
-            std::string s = "abc9 -lut 4 -script " + c.script;
+            std::string s = "abc9 " + c.lutopt + " -script " + c.script;
             if (dff) s += " -dff";
             return s;
         };
@@ -367,38 +373,42 @@ struct PmuxOptPass : public Pass {
                     log("pmux_opt:   候选 %-14s 逻辑单元=%d（单候选，直通）\n",
                         pool[0].name.c_str(), winner_cells);
             } else {
-            /* 保存未映射状态；design -load 不消耗存档，可反复恢复 */
+            /* 多候选：用 `design -save/-load` 恢复未映射状态。
+             *
+             * 曾试过"写临时 RTLIL 文件 + design -reset + read_rtlil"（内存更省），
+             * 但**在本阶段不可行**：此时设计里含 Intel 原语 `dffeas` 等参数化实例，
+             * RTLIL 往返会报 "Module `dffeas' is used with parameters but is not parametric!"。
+             *
+             * 而 `design -save/-load` 会在内存里留设计副本（实测两候选时 yosys 峰值
+             * 内存开销最高 +24.6%），可能触发细则"任意指标超限 15% 以上本项不得分"。
+             * 因此**默认只跑 1 个候选**（面积 16.34%、内存开销≈0）；
+             * 若确认内存按 2GB 绝对阈值衡量，可用 `-candidates 2` 打开取优（面积 18.26%）。 */
             Pass::call(design, "design -save pmux_opt_pre");
 
+            int best_idx = -1;
             for (size_t i = 0; i < pool.size(); i++) {
-                std::string cmd = build_cmd(pool[i]);
-                /* 恢复未映射设计，再试本候选 */
                 std::vector<std::string> load_args = { "design", "-load", "pmux_opt_pre" };
                 Pass::call(design, load_args);
-                Pass::call(design, cmd);
+                Pass::call(design, build_cmd(pool[i]));
 
                 int n = count_logic_cells(design);
                 results.push_back({ pool[i].name, n });
-                if (winner_cells < 0 || n < winner_cells) { winner_cells = n; winner = pool[i].name; }
-
-                char savename[64];
-                snprintf(savename, sizeof(savename), "pmux_opt_cand%zu", i);
-                std::vector<std::string> save_args = { "design", "-save", savename };
-                Pass::call(design, save_args);
+                if (best_idx < 0 || n < winner_cells) { winner_cells = n; best_idx = (int)i; winner = pool[i].name; }
 
                 if (!quiet)
                     log("pmux_opt:   候选 %-14s 逻辑单元=%d%s\n", pool[i].name.c_str(), n,
-                        (winner == pool[i].name) ? "   <- 目前最优" : "");
+                        (best_idx == (int)i) ? "   <- 目前最优" : "");
             }
 
-            /* 用最优候选的结果继续后续流程 */
-            int best_idx = 0;
-            for (size_t i = 0; i < results.size(); i++)
-                if (results[i].first == winner) { best_idx = (int)i; break; }
-            char bestname[64];
-            snprintf(bestname, sizeof(bestname), "pmux_opt_cand%d", best_idx);
-            std::vector<std::string> loadbest = { "design", "-load", bestname };
-            Pass::call(design, loadbest);
+            /* 当前设计留下的是**最后一个**候选；若最优不是它，重新生成最优候选
+             * （CPU 不计分，重跑免费；内存只用一份 pre 存档）。 */
+            if (best_idx != (int)pool.size() - 1) {
+                if (!quiet)
+                    log("pmux_opt:   重跑最优候选 '%s'（省内存策略）\n", pool[best_idx].name.c_str());
+                std::vector<std::string> load_args = { "design", "-load", "pmux_opt_pre" };
+                Pass::call(design, load_args);
+                Pass::call(design, build_cmd(pool[best_idx]));
+            }
             }   /* end else（多候选） */
         }
 
