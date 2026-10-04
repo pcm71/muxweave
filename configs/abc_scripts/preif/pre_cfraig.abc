@@ -1,0 +1,3 @@
+&dch -p -f -r
+&cfraig
+&if -a -v

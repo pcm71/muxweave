@@ -1,0 +1,3 @@
+&dch -p -f -r
+&rrr -T 30
+&if -a -v

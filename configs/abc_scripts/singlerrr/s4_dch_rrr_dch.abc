@@ -1,0 +1,4 @@
+&dch -p -f -r
+&rrr -T 1
+&dch -p -f -r
+&if -a -v

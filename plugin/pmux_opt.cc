@@ -210,18 +210,29 @@ static std::string write_temp_script(const std::string &tag, const std::string &
 /* 为了与官方基线逐字一致（用于"不劣化"保证）。                          */
 /* ------------------------------------------------------------------ */
 
-/* 面积向脚本（**重大发现**）：官方默认脚本是
- *     &scorr; &sweep; &dc2; &dch -f -r; &ps; &if {W} {D} {R} -v; &mfs
- * 实测把其中 **`&scorr/&sweep/&dc2/&ps` 四步去掉**、只留 `&dch -f -r` 再 `&if -a`，
- * 官方 4 个用例的 LUT 逻辑单元由 288/25/13/36 变为 **288/15/13/27**，
- * 逐用例平均缩减由 4.31% 提升到 **16.25%**（test2 −40%、test4 −25%）。
+/* 主脚本（**默认使用**）：在面积脚本前面先跑一次 GIA 并行重写引擎 `&rrr`（超时 1 秒）。
  *
- * 归因：有害的是 **`&dc2`** —— 单独把它加回来，结果反而退化到 20/13/38；
- *       `&if` 的 -F/-A/-C 参数与 -K 4 均无影响；`&dch` 跑两遍会退化回 25/13/36。
+ * 来源一（面积脚本本体）：官方默认脚本是
+ *     &scorr; &sweep; &dc2; &dch -f -r; &ps; &if {W} {D} {R} -v; &mfs
+ *   实测把 **`&scorr/&sweep/&dc2/&ps` 四步去掉**、只留 `&dch -p -f -r` 再 `&if -a`，
+ *   官方 4 个用例由 288/25/13/36 变为 288/15/13/27（16.34%）。
+ *   归因：有害的是 **`&dc2`**（单独加回退化到 20/13/38）；`-F/-A/-C/-K` 参数无影响。
+ *
+ * 来源二（前面加 `&rrr`）：`&rrr` 是 GIA 的并行重写引擎，超时取 1 秒即可把 test3 再降到 11，
+ *   但对 test4 有轻微副作用。**先 rrr 再 dch** 的组合实测为：
+ *       test1 288、test2 15、test3 **11**、test4 30  ⇒ 逐用例平均 **18.01%**
+ *   这是**单脚本**方案，不需要多候选机制，因此内存开销 ≈0（多候选会 +24%，见下）。
  *
  * 合规性：全部命令都在 **abc9 的 GIA 域**内，未更换映射器（符合答疑 C53-1）。
- * 等价性：已用 miter+sat（含自检与负对照）证明与官方映射逐用例等价。 */
+ * 等价性：已用 miter+sat（含自检与负对照）证明与官方映射逐用例等价（见 verify_new_script.sh）。 */
 static const char *SCRIPT_AREA =
+    "&rrr -T 1\n&dch -p -f -r\n&if -a -v\n";
+
+/* 备选脚本（`-candidates 2` 才启用）：纯面积脚本，test4 上更好（27 而非 30）。
+ * 与其他候选**逐用例取优**后可达 287/15/11/27 = **20.18%**（评分细则的满分线），
+ * 但候选机制需要 `design -save` 保留设计副本，实测让 yosys 峰值内存 **+24%** ——
+ * 超过细则"任意指标超限 15% 以上本项不得分"的红线，故**不作为默认**。 */
+static const char *SCRIPT_ALT =
     "&dch -p -f -r\n&if -a -v\n";
 
 /* 官方脚本原文（含失效的 &mfs）：作为候选池里的基线，保证结果不劣于官方。 */
@@ -271,7 +282,7 @@ struct PmuxOptPass : public Pass {
     void execute(std::vector<std::string> args, RTLIL::Design *design) override
     {
         std::string json_file;
-        int candidates = 1;   /* 默认 1 个候选：面积 16.34%、内存开销≈0（内存是评分指标） */
+        int candidates = 1;   /* 默认 1 个候选（单脚本，内存≈0）；`-candidates 2` 可开双候选取优到 20.18% */
         bool dff = false, dry_run = false, quiet = false, analyze_only = false;
 
         size_t argidx;
@@ -330,9 +341,10 @@ struct PmuxOptPass : public Pass {
         pool.push_back({ "abc9-area", "area", SCRIPT_AREA, "-lut 4" });
         /* 第二个候选用宽 LUT 成本模型：实测能让 test3 13→12，但会占一份设计副本内存，
          * 故默认关闭；`-candidates 2` 打开后逐用例取优 ⇒ 287/15/12/27（18.26%）。 */
-        if (candidates >= 2) pool.push_back({ "abc9-area-wide", "areaw", SCRIPT_AREA, "-luts 4,4,4,1" });
+        if (candidates >= 2) pool.push_back({ "abc9-area-plain", "plain", SCRIPT_ALT, "-lut 4" });
+        if (candidates >= 3) pool.push_back({ "abc9-area-wide", "areaw", SCRIPT_AREA, "-luts 4,4,4,1" });
         /* 再纳入官方脚本作为兜底，保证结果不可能劣于官方基线。 */
-        if (candidates >= 3) pool.push_back({ "abc9-official", "official", SCRIPT_OFFICIAL, "-lut 4" });
+        if (candidates >= 4) pool.push_back({ "abc9-official", "official", SCRIPT_OFFICIAL, "-lut 4" });
 
         std::vector<std::string> tmp_files;
         for (auto &c : pool) {
