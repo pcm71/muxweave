@@ -1,0 +1,4 @@
+&rrr -T 1
+&dch -p -f -r
+&sweep
+&if -a -v

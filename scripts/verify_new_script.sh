@@ -16,7 +16,7 @@ cd "$P" || exit 1
 D=runs/verify_new
 L=formal/verify_new
 mkdir -p "$D" "$L"
-NEW=configs/abc_scripts/singlerrr/s1_rrr_dch.abc   # 必须与 pass 内 SCRIPT_AREA 逐字一致
+NEW=configs/abc_scripts/verify_shipped/shipped.abc   # 必须与 pass 内 SCRIPT_AREA 逐字一致
 
 gen() { # $1=verilog $2=top $3=abc9参数 $4=输出
   # 在 map_ffs **之前**跑 abc9：此时触发器仍是通用类型（$adff/$dff），

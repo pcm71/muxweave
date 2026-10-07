@@ -1,0 +1,4 @@
+&rrr -T 1 -X 2
+&dch -p -f -r
+&rrr -T 1 -X 2
+&if -a -F 8 -v
