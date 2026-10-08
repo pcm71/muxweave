@@ -1,0 +1,6 @@
+&rrr -T 1 -X 2
+&dch -f -r
+&compress3rs
+&dch -f -r
+&compress3rs
+&if -a -F 16 -v

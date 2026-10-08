@@ -1,0 +1,3 @@
+&rrr -T 1 -X 2
+&syn3
+&if -a -F 16 -v

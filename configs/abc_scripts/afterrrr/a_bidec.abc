@@ -1,0 +1,3 @@
+&rrr -T 1 -X 2
+&bidec
+&if -a -F 16 -v

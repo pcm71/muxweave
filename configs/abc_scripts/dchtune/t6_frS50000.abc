@@ -1,0 +1,3 @@
+&rrr -T 1 -X 2
+&dch -f -r -S 50000
+&if -a -F 16 -v
