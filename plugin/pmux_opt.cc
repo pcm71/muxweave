@@ -234,7 +234,7 @@ static std::string write_temp_script(const std::string &tag, const std::string &
  * 合规性：全部命令都在 **abc9 的 GIA 域**内，未更换映射器（符合答疑 C53-1）。
  * 等价性：已用 miter+sat（含自检与负对照）证明与官方映射逐用例等价。 */
 static const char *SCRIPT_AREA =
-    "&rrr -T 1 -X 2\n&dch -f -r\n&compress3rs\n&if -a -F 16 -v\n";
+    "&rrr -T 10 -X 2\n&dch -f -r\n&compress3rs\n&if -a -F 16 -v\n";
 
 /* 备选脚本（`-candidates 2` 才启用）：纯面积脚本，test4 上更好（27 而非 30）。
  * 与其他候选**逐用例取优**后可达 287/15/11/27 = **20.18%**（评分细则的满分线），
