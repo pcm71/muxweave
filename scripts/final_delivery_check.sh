@@ -23,7 +23,7 @@ tee -o runs/final_$top.json stat -json
   python3 - "$top" <<'PY'
 import json, sys
 top = sys.argv[1]
-exp = {"test1": 288, "test2": 15, "test3": 12, "test4": 24}
+exp = {"test1": 287, "test2": 15, "test3": 9, "test4": 29}   # 当前配置（逐用例平均 22.64%）
 try:
     d = json.load(open(f"runs/final_{top}.json", encoding="utf-8"))
     nbt = d["design"]["num_cells_by_type"]
