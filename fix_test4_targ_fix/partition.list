@@ -1,5 +1,0 @@
-test4 test4.only_5b memory : only_5b[0]
-test4 test4.dataout memory : dataout[5:0]
-test4 test4.datain_5bis7 memory : datain_5bis7[0]
-test4 test4.data_dp memory : data_dp[0]
-test4 test4.data_dn memory : data_dn[0]

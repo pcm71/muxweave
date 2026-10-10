@@ -57,5 +57,5 @@ bash scripts/wsl_large_eval.sh
 > **⚠️ 作废声明（2026-10-04）**：上表中的面积成绩（如 **7.28%**）来自"把 `abc9` 换成经典 `abc`"的方案，
 > 违反最新答疑 **C53-1**（"请都用 yosys 自带的 abc9 运行，这个需要统一"），**已作废**，
 > 仅作技术过程记录保留。**现行合规成绩为逐用例平均 22.64%**（纯 abc9 四段式脚本，
-> 逻辑单元 287/15/9/29，基线 288/25/13/36），见 [`docs/official_submission.md`](../docs/official_submission.md)。
-> 口径依据见 [`docs/requirements_authoritative.md`](../docs/requirements_authoritative.md)。
+> 逻辑单元 287/15/9/29，基线 288/25/13/36），见 [`docs/official_submission.md`](../../docs/official_submission.md)。
+> 口径依据见 [`docs/requirements_authoritative.md`](../../docs/requirements_authoritative.md)。

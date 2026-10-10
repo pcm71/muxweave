@@ -1,6 +1,0 @@
-read_verilog runs/netlist_official/test4_ctrl_abc9.v
-prep -top test4
-opt_clean
-check -initdrv
-setundef -undriven -undef
-write_rtlil ctrl_test4/gate.il

@@ -1,9 +1,0 @@
-EQY 23:18:31 [fix_test4_targ_fix] read_gold: starting process "yosys -ql fix_test4_targ_fix/gold.log fix_test4_targ_fix/gold.ys"
-EQY 23:18:31 [fix_test4_targ_fix] read_gold: finished (returncode=0)
-EQY 23:18:31 [fix_test4_targ_fix] read_gate: starting process "yosys -ql fix_test4_targ_fix/gate.log fix_test4_targ_fix/gate.ys"
-EQY 23:18:31 [fix_test4_targ_fix] read_gate: finished (returncode=0)
-EQY 23:18:31 [fix_test4_targ_fix] combine: starting process "yosys -ql fix_test4_targ_fix/combine.log fix_test4_targ_fix/combine.ys"
-EQY 23:18:31 [fix_test4_targ_fix] combine: finished (returncode=0)
-EQY 23:18:31 [fix_test4_targ_fix] partition: starting process "cd fix_test4_targ_fix; yosys -ql partition.log partition.ys"
-EQY 23:18:31 [fix_test4_targ_fix] partition: finished (returncode=0)
-EQY 23:18:32 [fix_test4_targ_fix] Skipping strategy 'simple' for partition 'test4.only_5b' as it contains memory.

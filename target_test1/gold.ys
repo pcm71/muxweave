@@ -1,6 +1,0 @@
-read_verilog benchmarks/official/test1.v
-prep -top test1
-opt_clean
-check -initdrv
-setundef -undriven -undef
-write_rtlil target_test1/gold.il

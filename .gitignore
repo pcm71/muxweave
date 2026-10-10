@@ -34,6 +34,11 @@ __pycache__/
 /*_eqy/
 /equivalent_*/
 
-# �ύ�����������󣬲���⣩
+# 提交物打包产物（体积大，不入库）
 /dist/
 *.tar.gz
+
+# EQY 运行工作目录（生成物；由 scripts/ 下的验证脚本重新产生）
+/ctrl_test*/
+/target_test*/
+/fix_test*/
