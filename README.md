@@ -22,6 +22,24 @@
 > 面积提升轨迹：`5.00% → 16.25% → 16.34% → 18.01% → 21.86% → 22.64%`。
 > 更早的 20.26%/22.03%/24.10%/7.28% 来自「把 `abc9` 换成经典 `abc`」，违反答疑 C53-1，**已作废**。
 
+## 先读这两份
+
+| 文档 | 作用 |
+|---|---|
+| [`docs/work_summary.md`](docs/work_summary.md) | **当前工作说明** —— 我们在做什么、做到哪、怎么证明可信（面向队友与评委，少术语） |
+| [`docs/roadmap.md`](docs/roadmap.md) | **预期工作大纲** —— 还缺什么、设计文档的四段式提纲、答辩材料提纲、执行顺序 |
+
+其余常用文档：
+
+| 文档 | 作用 |
+|---|---|
+| [`docs/requirements_authoritative.md`](docs/requirements_authoritative.md) | **唯一口径依据**：逐字摘录赛题原文与全部答疑 |
+| [`docs/official_submission.md`](docs/official_submission.md) | 逐用例提交报告（脚本自动生成，含合规性声明） |
+| [`docs/equivalence_matrix.md`](docs/equivalence_matrix.md) | 等价性验证矩阵与踩坑记录 |
+| [`docs/abc9_constraint_findings.md`](docs/abc9_constraint_findings.md) | 面积优化的推导过程与技术发现 |
+| [`docs/reproduce.md`](docs/reproduce.md) | 复现步骤 |
+| [`docs/open_questions.md`](docs/open_questions.md) | 待主办方澄清的问题 |
+
 ## 口径依据
 
 **唯一权威依据是 [`docs/requirements_authoritative.md`](docs/requirements_authoritative.md)**
