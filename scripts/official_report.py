@@ -4,15 +4,17 @@
 口径（依据官方 Q&A）：
   面积：缩减率 = (优化前逻辑单元数 − 优化后) / 优化前逻辑单元数，**按每个用例的平均算**，主看逻辑单元
   DFF ：不做硬性要求，但不应多于优化前
-  效率：开销 = CPU 时间 + 整进程峰值内存，**每个用例都要满足**（≤5% 得满分），**CPU 时间含 abc**
+  效率：内存按 C54-2「峰值工作内存，**只看 yosys.exe**」统计（scripts/measure_yosys_self.py
+        轮询 /proc/<pid>/status 的 VmHWM，不含 abc 子进程）；耗时按 C54-1
+        「编译耗时并不作为评分选项」**不作评分项**，CPU 仍照实采集、仅供备查
   基线：加优化算法编译的程序 与 原始代码编译的程序 在**同一环境**下比较
         ⇒ 用 runs/binaries/yosys-baseline 与 yosys-pmux 两个真实二进制
 
 用法（在 WSL 中执行）:
     python3 scripts/official_report.py [重复次数，默认 7]
 输出:
-    reports/official_submission.md   人读报告
-    reports/official_results.json    机器可读结果
+    docs/official_submission.md   人读报告
+    docs/official_results.json    机器可读结果
 """
 from __future__ import annotations
 
@@ -146,7 +148,7 @@ def main() -> int:
     L.append("|---|---|")
     L.append("| 面积 | `(优化前逻辑单元数 − 优化后) / 优化前逻辑单元数`，**按每个用例的平均算**，主看逻辑单元 |")
     L.append("| DFF | 不做硬性要求，但**不应多于优化前** |")
-    L.append("| 效率 | 开销 = CPU 时间 + 整进程峰值内存，**每个用例都要满足**，CPU 时间含 abc |")
+    L.append("| 效率 | 内存按 C54-2「峰值工作内存，**只看 yosys.exe**」统计；CPU 时间按 C54-1「编译耗时并不作为评分选项」**不作评分项**，仅备查 |")
     L.append("| 基线 | 「加优化算法编译的程序」vs「原始代码编译的程序」在**同一环境**比较 ⇒ 两个真实二进制 |")
     L.append("")
     L.append("两个二进制（同一源码树，唯一差别是 `techlibs/intel/synth_intel.cc` 是否调用 `pmux_opt`）：")
@@ -177,11 +179,19 @@ def main() -> int:
         L.append(f"- ⚠️ 逐用例平均 {mean_red*100:.2f}% < 10% —— 未达赛题技术指标（评分细则：有缩减即得基础分 20 分，无优化效果才 0 分）")
     L.append(f"- DFF 约束：{'✅ 全部用例均未增加' if not dff_bad else '❌ 增加于 ' + ', '.join(dff_bad)}")
     L.append("")
-    L.append("### 效率判定（官方口径：每个用例都要 ≤5%）")
+    L.append("### 效率判定（官方口径）")
     L.append("")
-    L.append(f"- 最大 CPU 开销：**{worst_cpu:+.1f}%**")
-    L.append(f"- 最大内存开销：**{worst_rss:+.1f}%**")
-    L.append(f"- >>> **{'✅ 全部用例 ≤5%' if worst_cpu <= 5 and worst_rss <= 5 else '⚠️ 内存开销超过 5% 满分线（细则：超限 15% 以上本项不得分，当前未触及该线）'}**")
+    L.append(f"- 最大 CPU 开销：**{worst_cpu:+.1f}%**（**按答疑 C54-1 不计分**，仅备查）")
+    L.append(f"- 最大内存开销：**{worst_rss:+.1f}%**（**评分指标**）")
+    # 判定只看内存：CPU 已按 C54-1 移出评分，若把它算进条件，则因 CPU 相对开销必然很大
+    # （经典映射器相对官方基线总是显著更慢）而**永远**打印警告，导致结论失真。
+    if worst_rss <= 5:
+        verdict = "✅ 最大内存开销 ≤5% ⇒ 按细则「不超过所有指标的 5% 则得满分」，算法效率项可得满分"
+    elif worst_rss <= 15:
+        verdict = "⚠️ 最大内存开销超过 5% 满分线（细则：超限 15% 以上本项不得分，当前未触及该线）"
+    else:
+        verdict = "❌ 最大内存开销超限 15% 以上 ⇒ 按细则本项不得分"
+    L.append(f"- >>> **{verdict}**")
     L.append("")
     L.append("> 说明：**CPU 时间已按答疑 C54-1「编译耗时并不作为评分选项」移出评分**，仅备查。")
     L.append("> 内存按 **C54-2「峰值工作内存，只看 yosys.exe」** 统计（`scripts/measure_yosys_self.py` 轮询 `/proc/<pid>/status` 的 VmHWM，不含 abc 子进程）。")

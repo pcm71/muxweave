@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # tune_final_combo.sh —— 最后一轮组合微调
 #
-# 已知最好：&rrr -T 1 -X 2; &dch -f -r; &compress3rs; &if -a -F 16 -v ⇒ 287/15/9/29 = 22.64%
+# 已知最好：&rrr -T 10 -X 2; &dch -f -r; &compress3rs; &if -a -F 16 -v ⇒ 287/15/9/29 = 22.64%
 set -uo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 P=/mnt/c/Users/LEGION/Desktop/PMUX/muxweave
@@ -10,7 +10,7 @@ D=runs/final_combo
 S=configs/abc_scripts/finalcombo
 mkdir -p "$D" "$S"
 
-mk() { local n="$1"; shift; { echo "&rrr -T 1 -X 2"; printf '%s\n' "$@"; echo "&if -a -F 16 -v"; } > "$S/$n.abc"; }
+mk() { local n="$1"; shift; { echo "&rrr -T 10 -X 2"; printf '%s\n' "$@"; echo "&if -a -F 16 -v"; } > "$S/$n.abc"; }
 mk f0_cur     "&dch -f -r" "&compress3rs"
 mk f1_dch2    "&dch -f -r" "&compress3rs" "&dch -f -r"
 mk f2_comp2   "&dch -f -r" "&compress3rs" "&compress3rs"
