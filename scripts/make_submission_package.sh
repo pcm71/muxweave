@@ -4,7 +4,7 @@
 # C55 原文：「1.优化源码（包括新加的 opt_xxx.cc，若有修改 abc 脚本也需要一并提交）
 #            2.编译后的 yosys 二进制可执行程序以及其依赖库」
 #
-# 本脚本组装一个自包含目录，并在最后**实际运行包内二进制**验证它能复现 16.34%。
+# 本脚本组装一个自包含目录，并在最后**实际运行包内二进制**验证它能复现 22.64%。
 set -uo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 P=/mnt/c/Users/LEGION/Desktop/PMUX/muxweave
@@ -29,8 +29,8 @@ fi
 echo
 echo "=== 2) 调优的 abc9 脚本（C55 明确要求一并提交）==="
 # 只提交 pass 实际用到的脚本 + 官方脚本对照
-cp configs/abc_scripts/nkl/n_win.abc "$PKG/abc_scripts/area_script.abc" 2>/dev/null \
-  && echo "  ✓ area_script.abc（pass 内 SCRIPT_AREA，逐字一致）"
+cp configs/abc_scripts/verify_shipped/shipped.abc "$PKG/abc_scripts/area_script.abc" 2>/dev/null \
+  && echo "  ✓ area_script.abc（pass 内 SCRIPT_AREA，四段式，逐字一致）"
 cat > "$PKG/abc_scripts/official_script.abc" <<'EOF'
 &scorr
 &sweep
@@ -74,7 +74,7 @@ fi
 
 echo
 echo "=== 5) 证据材料 ==="
-for f in docs/official_submission.md docs/equivalence_matrix.md docs/requirements_authoritative.md; do
+for f in docs/official_submission.md docs/equivalence_matrix.md docs/requirements_authoritative.md docs/work_summary.md docs/roadmap.md; do
   [ -f "$f" ] && cp "$f" "$PKG/evidence/" && echo "  ✓ $f"
 done
 cp benchmarks/official/*.v "$PKG/evidence/" 2>/dev/null && echo "  ✓ 官方 4 个用例"
@@ -100,7 +100,7 @@ try:
     print(d['design']['num_cells']-seq)
 except Exception: print('?')" 2>/dev/null)
   case "$top" in
-    test1) exp=287 ;; test2) exp=15 ;; test3) exp=13 ;; test4) exp=27 ;; *) exp=? ;;
+    test1) exp=287 ;; test2) exp=15 ;; test3) exp=9 ;; test4) exp=29 ;; *) exp=? ;;
   esac
   ok="✓"; [ "$n" != "$exp" ] && ok="✗"
   printf '  %-8s %-12s %-12s %s\n' "$top" "$n" "$exp" "$ok"
@@ -108,6 +108,48 @@ done
 cd "$P" || exit 1
 
 echo
+# 包根目录 README（先读这个）
+cat > "$PKG/README.md" <<'READMEEOF'
+# PMUX 结构优化 —— 提交物
+
+**面积：逐用例平均 22.64%**（官方 4 个用例，287 / 15 / 9 / 29；基线 288 / 25 / 13 / 36）
+
+## 先读哪份
+
+| 文档 | 作用 |
+|---|---|
+| [`evidence/work_summary.md`](evidence/work_summary.md) | **当前工作说明** —— 我们在做什么、做到哪、怎么证明可信 |
+| [`evidence/roadmap.md`](evidence/roadmap.md) | **预期工作大纲** —— 还缺什么、设计文档提纲、答辩提纲 |
+| [`MANIFEST.md`](MANIFEST.md) | 本包清单：目录结构、文件明细、集成点 diff、结果摘要 |
+| [`evidence/official_submission.md`](evidence/official_submission.md) | 逐用例提交报告（含合规性声明） |
+| [`evidence/equivalence_matrix.md`](evidence/equivalence_matrix.md) | 等价性验证矩阵 |
+| [`evidence/requirements_authoritative.md`](evidence/requirements_authoritative.md) | 赛题原文与主办方答疑的权威口径 |
+
+## 目录
+
+```
+src/            优化源码（C55 第①项）
+abc_scripts/    调优后的 abc9 脚本（C55 明确要求一并提交）
+bin/            编译后的 yosys 二进制及其依赖（C55 第②项）
+share/yosys/    二进制运行所需的数据文件
+lib/            非系统依赖库
+evidence/       证据材料 + 官方 4 个测试用例
+MANIFEST.md     本包清单
+```
+
+## 快速验证（无需安装，用包内二进制）
+
+```bash
+cd <解压目录>
+for c in test1 test2 test3 test4; do
+  ./bin/yosys -q -p "read_verilog evidence/$c.v; hierarchy -top $c; synth_intel -family cycloneiv -top $c; stat"
+done
+```
+
+期望逻辑单元数：test1=287、test2=15、test3=9、test4=29。
+READMEEOF
+echo "  ✓ README.md（包根目录，指路用）"
+
 echo "=== 7) 生成清单 ==="
 {
   echo "# 提交物清单（按答疑 C55）"
@@ -125,6 +167,9 @@ echo "=== 7) 生成清单 ==="
   echo "## 调优的 abc9 脚本"
   ls -la "$PKG/abc_scripts" | tail -n +4 | awk '{printf "- %s  (%s 字节)\n", $9, $5}'
   echo
+  echo "## 证据材料（evidence/）"
+  ls -la "$PKG/evidence" | tail -n +4 | awk '{printf "- evidence/%s  (%s 字节)\n", $9, $5}'
+  echo
   echo "## ② 二进制与依赖"
   ls -la "$PKG/bin" | tail -n +4 | awk '{printf "- bin/%s  (%s 字节)\n", $9, $5}'
   [ -d "$PKG/lib" ] && ls -la "$PKG/lib" | tail -n +4 | awk '{printf "- lib/%s\n", $9}'
@@ -138,10 +183,10 @@ echo "=== 7) 生成清单 ==="
   echo '```'
   echo
   echo "## 结果摘要"
-  echo "- 面积：逐用例平均 **16.34%**（287/15/13/27，基线 288/25/13/36）"
+  echo "- 面积：逐用例平均 **22.64%**（287/15/9/29，基线 288/25/13/36）"
   echo "- DFF：全部不变"
   echo "- 等价性：官方口径 EQY 2/4 + 设计模式 miter+sat 4/4（含自检与负对照）"
-  echo "- 内存开销：+11.3%（C54-2 口径，只看 yosys.exe）；CPU 按 C54-1 不计分"
+  echo "- 内存开销：最大 **+1.0%**（C54-2 口径，只看 yosys.exe，不超过 5% 满分线）；CPU 按 C54-1 不计分"
 } > "$PKG/MANIFEST.md"
 echo "  ✓ MANIFEST.md"
 
