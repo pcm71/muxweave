@@ -26,7 +26,7 @@ SKIP = {"docs/qa", "dist", ".git", "runs", "reports"}
 
 OLD = ["5.00%", "16.25%", "16.34%", "18.01%", "21.86%", "20.26%", "22.03%", "24.10%", "7.28%"]
 CUR = "22.64%"
-HIST = ("历史", "曾", "早期", "作废", "→", "阶段", "原本", "之前", "上一版", "轨迹", "推翻", "旧")
+HIST = ("历史", "曾", "早期", "作废", "→", "阶段", "原本", "之前", "上一版", "轨迹", "推翻", "旧", "当时")
 NOW = ("当前", "现行", "现在", "上限", "最好成绩", "本版")
 
 bad, ok, hist = [], [], []
@@ -42,7 +42,10 @@ for p in sorted(ROOT.rglob("*.md")):
         if not any(o in ln for o in OLD):
             continue
         rec = f"{s}:{i}  {ln.strip()[:88]}"
-        if any(h in ln for h in HIST):
+        # 同一行里同时出现"历史标记"和"当前值"的，是"当时 X → 现行 22.64%"这种正确对照，不算错。
+        if CUR in ln and any(h in ln for h in HIST):
+            hist.append(rec)
+        elif any(h in ln for h in HIST):
             hist.append(rec)
         elif any(n in ln for n in NOW):
             bad.append(rec)
